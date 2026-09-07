@@ -47,6 +47,11 @@ python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
 
+# Third-party packages that ship no stubs.
+[[tool.mypy.overrides]]
+module = ["redis.*", "supabase.*", "slowapi.*", "postgrest.*", "storage3.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

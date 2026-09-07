@@ -1,6 +1,7 @@
 """FastAPI application entry point."""
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response
@@ -14,7 +15,7 @@ log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     log.info("starting api in %s mode", settings.APP_ENV)
     yield
     from app.core.cache import get_redis
