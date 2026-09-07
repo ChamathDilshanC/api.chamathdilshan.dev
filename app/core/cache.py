@@ -100,7 +100,10 @@ async def invalidate_tags(*tags: str) -> None:
     try:
         keys: set[str] = set()
         for tag in tags:
-            keys.update(await redis.smembers(key("tag", tag)))
+            # decode_responses=True gives str, but the stubs still widen to
+            # bytes | str — normalise so this holds either way.
+            members = await redis.smembers(key("tag", tag))
+            keys.update(m.decode() if isinstance(m, bytes) else str(m) for m in members)
 
         pipe = redis.pipeline()
         for tag in tags:
