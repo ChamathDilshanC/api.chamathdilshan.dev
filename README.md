@@ -1,8 +1,10 @@
 # api.chamathdilshan.dev — Backend
 
-FastAPI service providing the REST API, GitHub OAuth authentication,
-owner-only authorization, content management, media handling, caching and
-audit logging for the chamathdilshan.dev platform.
+FastAPI service providing the content API behind every editable part of the
+site, owner-only sign-in (Google + emailed code via Resend), Cloudinary media,
+caching and audit logging for the chamathdilshan.dev platform.
+
+Setup and usage of the admin panel: `docs/ADMIN_CMS.md` in the main repo.
 
 This repository is a **submodule** of
 [ChamathDilshanC/chamathdilshan](https://github.com/ChamathDilshanC/chamathdilshan).
@@ -17,7 +19,9 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 
-cp .env.example .env               # fill in DB, OAuth, Redis
+cp .env.example .env               # fill in ADMIN_EMAIL, GOOGLE_*, CLOUDINARY_*
+alembic upgrade head               # create the tables (SQLite by default)
+python -m app.seed --sections      # optional: load the current site content
 uvicorn app.main:app --reload      # http://localhost:8000
 ```
 
@@ -31,21 +35,21 @@ OpenAPI docs: `http://localhost:8000/docs` (disabled in production).
 app/
 ├── main.py            application entry point, CORS, health, routers
 ├── api/
-│   ├── public/        unauthenticated read endpoints
-│   ├── admin/         owner-only endpoints — all behind authorization
-│   └── auth/          GitHub OAuth start + callback + session
+│   ├── public/        /api/content, /api/projects, /api/posts, /api/skills
+│   ├── admin/         owner-only CRUD — sections, projects, posts, skills, media
+│   └── auth/          Google sign-in, emailed code, session
 ├── core/
 │   ├── config.py      settings from environment
+│   ├── db.py          async SQLAlchemy engine and base
 │   ├── cache.py       Redis cache-aside, tag invalidation, frontend revalidate
-│   ├── http_cache.py  Cache-Control / ETag policies
-│   ├── security.py    session handling, owner verification
-│   └── logging.py
+│   └── http_cache.py  Cache-Control / ETag policies
 ├── models/            SQLAlchemy models
-├── schemas/           Pydantic request/response models
+├── schemas/           Pydantic models — also the admin form definitions
 ├── services/          business logic (owns cache invalidation on mutation)
-├── repositories/      database access
-├── integrations/      Supabase, GitHub, storage clients
-└── security/          middleware, rate limiting, validation helpers
+├── integrations/      Google, Resend, Cloudinary
+├── security/          sessions, origin check, rate limiting, signed cookies
+└── seed/              default content + `python -m app.seed`
+migrations/            Alembic
 
 tests/
 ├── unit/
@@ -56,9 +60,11 @@ tests/
 
 ## Authorization
 
-Admin access is GitHub OAuth plus an allowlist on the **immutable numeric
-GitHub user ID** (`GITHUB_OWNER_ID`). Every `/api/admin/*` endpoint verifies
-the session server-side — route obscurity is not a security control.
+Admin sign-in is Google OpenID Connect restricted to `ADMIN_EMAIL` (and the
+immutable Google `sub` when `ADMIN_GOOGLE_SUB` is set), followed by a 6-digit
+code emailed through Resend. Every `/api/admin/*` endpoint verifies the session
+and, for writes, the request Origin server-side — route obscurity is not a
+security control.
 
 See `docs/SECURITY.md` in the main repo.
 
