@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin.routes import router as admin_router
 from app.api.auth.routes import router as auth_router
-from app.api.public.routes import router as public_router
+from app.api.content.routes import router as public_router
 from app.core.config import settings
 from app.core.db import dispose_engine
 from app.core.http_cache import no_store
