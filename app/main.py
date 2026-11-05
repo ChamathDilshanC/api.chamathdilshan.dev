@@ -56,6 +56,21 @@ app.add_middleware(
 )
 
 
+@app.get("/")
+async def root(response: Response) -> dict[str, str]:
+    """A short description for anyone who opens the API's address in a browser."""
+    no_store(response)
+    return {
+        "name": "Chamath Dilshan API",
+        "description": (
+            "The backend behind Chamath Dilshan's portfolio: it serves the projects, "
+            "journal articles, skills and page content, and delivers contact-form messages."
+        ),
+        "website": settings.PUBLIC_SITE_URL,
+        "health": "/api/health",
+    }
+
+
 @app.get("/api/health")
 async def health(response: Response) -> dict[str, str]:
     no_store(response)

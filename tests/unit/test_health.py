@@ -7,6 +7,16 @@ from app.main import app
 client = TestClient(app)
 
 
+def test_root_describes_the_api() -> None:
+    res = client.get("/")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["name"] == "Chamath Dilshan API"
+    assert body["description"]
+    assert body["health"] == "/api/health"
+    assert res.headers["cache-control"] == "private, no-store, max-age=0"
+
+
 def test_health_returns_ok() -> None:
     res = client.get("/api/health")
     assert res.status_code == 200
