@@ -6,6 +6,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, ValidationInfo, field_validator, model_validator
 
 from app.schemas.common import (
+    BrandIconUrl,
     CamelModel,
     Copy,
     ExternalUrl,
@@ -162,7 +163,10 @@ class SkillIn(CamelModel):
     category: Annotated[str, Field(max_length=60)] = Field(
         default="", description="e.g. Frontend, Backend, Cloud, Tools."
     )
-    icon: ImageUrl | None = Field(default=None, description="Optional logo shown on the tile.")
+    icon: BrandIconUrl | None = Field(
+        default=None,
+        description="Shown under the name. Search theSVG by name, or paste any image URL.",
+    )
     featured: bool = Field(
         default=True, description="Show in the scrolling strip on the home page."
     )

@@ -145,6 +145,21 @@ def test_skill_crud(signed_in: TestClient) -> None:
     assert signed_in.get("/api/skills").json() == []
 
 
+def test_skill_icon_from_thesvg(signed_in: TestClient) -> None:
+    # The admin renders the icon field as a theSVG search.
+    icon = signed_in.get("/api/admin/schemas/skill").json()["properties"]["icon"]
+    assert "brand-icon" in [part.get("widget") for part in icon.get("anyOf", [icon])]
+
+    url = "https://thesvg.org/icons/fastapi/default.svg"
+    made = signed_in.post("/api/admin/skills", json={"name": "FastAPI", "icon": url})
+    assert made.status_code == 201
+    assert signed_in.get("/api/skills").json()[0]["icon"] == url
+
+    for bad in ("javascript:alert(1)", "data:image/svg+xml,<svg/>", "//thesvg.org/icons/x.svg"):
+        res = signed_in.post("/api/admin/skills", json={"name": "X", "icon": bad})
+        assert res.status_code == 422, bad
+
+
 # --- media --------------------------------------------------------------------
 
 

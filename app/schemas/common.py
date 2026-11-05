@@ -48,6 +48,9 @@ def _check_external_url(value: str) -> str:
 
 MediaUrl = Annotated[str, Field(max_length=1000), AfterValidator(_check_media_url)]
 ImageUrl = Annotated[MediaUrl, Field(json_schema_extra=widget("image"))]
+# A brand logo picked from theSVG by name in the admin
+# (https://thesvg.org/icons/{slug}/{variant}.svg); any other image URL works too.
+BrandIconUrl = Annotated[MediaUrl, Field(json_schema_extra=widget("brand-icon"))]
 Href = Annotated[str, Field(max_length=500), AfterValidator(_check_href)]
 ExternalUrl = Annotated[str, Field(max_length=500), AfterValidator(_check_external_url)]
 
