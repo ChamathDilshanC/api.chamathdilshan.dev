@@ -13,6 +13,8 @@ from app.models import Media, Post, Project, Skill
 from app.schemas.common import CamelModel
 from app.schemas.entities import (
     AuditOut,
+    ExperienceIn,
+    ExperienceOut,
     MediaOut,
     MediaRegister,
     MediaSignature,
@@ -28,7 +30,7 @@ from app.schemas.entities import (
     SkillOut,
 )
 from app.security.deps import DB, CurrentAdmin, require_admin, require_trusted_origin
-from app.services import audit, media, posts, projects, sections, skills
+from app.services import audit, experience, media, posts, projects, sections, skills
 
 
 def _private(response: Response) -> None:
@@ -43,7 +45,12 @@ router = APIRouter(
     ]
 )
 
-SCHEMAS: dict[str, type[CamelModel]] = {"project": ProjectIn, "post": PostIn, "skill": SkillIn}
+SCHEMAS: dict[str, type[CamelModel]] = {
+    "project": ProjectIn,
+    "post": PostIn,
+    "skill": SkillIn,
+    "experience": ExperienceIn,
+}
 
 
 # --- overview -----------------------------------------------------------------
@@ -75,7 +82,7 @@ async def audit_logs(db: DB, limit: Annotated[int, Query(ge=1, le=500)] = 100) -
 
 
 @router.get("/schemas/{name}")
-async def schema(name: Literal["project", "post", "skill"]) -> dict[str, Any]:
+async def schema(name: Literal["project", "post", "skill", "experience"]) -> dict[str, Any]:
     """JSON Schema the admin renders its editors from."""
     result: dict[str, Any] = SCHEMAS[name].model_json_schema(by_alias=True)
     return result
@@ -180,6 +187,43 @@ async def update_post(post_id: int, data: PostIn, admin: CurrentAdmin, db: DB) -
 async def delete_post(post_id: int, admin: CurrentAdmin, db: DB) -> None:
     slug = await posts.delete(db, post_id)
     await audit.record(db, "post.delete", actor=admin.email, target=slug, ip=admin.ip)
+
+
+# --- work experience ----------------------------------------------------------
+
+
+@router.get("/experience", response_model=list[ExperienceOut])
+async def list_experience(db: DB) -> Any:
+    return await experience.list_admin(db)
+
+
+@router.get("/experience/{experience_id}", response_model=ExperienceOut)
+async def get_experience(experience_id: int, db: DB) -> Any:
+    return experience.to_out(await experience.get(db, experience_id))
+
+
+@router.post("/experience", response_model=ExperienceOut, status_code=status.HTTP_201_CREATED)
+async def create_experience(data: ExperienceIn, admin: CurrentAdmin, db: DB) -> Any:
+    result = await experience.create(db, data)
+    await audit.record(db, "experience.create", actor=admin.email, target=result.company,
+                       ip=admin.ip)
+    return result
+
+
+@router.put("/experience/{experience_id}", response_model=ExperienceOut)
+async def update_experience(
+    experience_id: int, data: ExperienceIn, admin: CurrentAdmin, db: DB
+) -> Any:
+    result = await experience.update(db, experience_id, data)
+    await audit.record(db, "experience.update", actor=admin.email, target=result.company,
+                       ip=admin.ip)
+    return result
+
+
+@router.delete("/experience/{experience_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_experience(experience_id: int, admin: CurrentAdmin, db: DB) -> None:
+    company = await experience.delete(db, experience_id)
+    await audit.record(db, "experience.delete", actor=admin.email, target=company, ip=admin.ip)
 
 
 # --- skills -------------------------------------------------------------------

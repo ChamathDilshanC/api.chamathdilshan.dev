@@ -1,4 +1,5 @@
-"""Content tables: editable site sections, projects, journal posts, skills and media."""
+"""Content tables: editable site sections, projects, journal posts, skills, work experience
+and media."""
 
 from datetime import date, datetime
 from typing import Any
@@ -80,6 +81,28 @@ class Skill(Base):
     # Shown in the Stack grid on the about page.
     visible: Mapped[bool] = mapped_column(Boolean, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
+class Experience(Base):
+    """One employer on the about page, with every role held there (LinkedIn style).
+
+    Roles live in a JSON list because they are always read and edited together
+    with their company. The public order is derived from the role dates.
+    """
+
+    __tablename__ = "experiences"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company: Mapped[str] = mapped_column(String(120))
+    company_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    logo: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    location: Mapped[str] = mapped_column(String(120), default="")
+    # [{title, employmentType, start: "YYYY-MM", end: "YYYY-MM" | null, summary,
+    #   highlights: [...], skills: [...]}, …]
+    roles: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
+    published: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 

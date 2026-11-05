@@ -242,6 +242,13 @@ class AboutPage(CamelModel):
     blurb: Line
 
 
+class AboutExperience(CamelModel):
+    """Heading for the work timeline. The roles themselves are managed under Experience."""
+
+    title: Short
+    aside: Short
+
+
 class ProcessStep(CamelModel):
     number: Annotated[str, Field(max_length=10)]
     title: Short
@@ -350,6 +357,9 @@ _SPECS = [
     SectionSpec("page.blog", "Journal page", "Pages", "Hero and list heading on /blog.",
                 ListPage),
     SectionSpec("page.about", "About hero", "Pages", "Hero on /about.", AboutPage),
+    SectionSpec("about.experience", "About · Experience", "Pages",
+                "Heading for the work timeline. Roles are managed under Experience.",
+                AboutExperience),
     SectionSpec("about.process", "About · Process", "Pages", "Process statement and steps.",
                 AboutProcess),
     SectionSpec("about.toolbox", "About · Toolbox", "Pages", "Scrolling tool tiles.",

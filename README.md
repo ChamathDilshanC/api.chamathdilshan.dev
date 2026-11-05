@@ -35,8 +35,8 @@ OpenAPI docs: `http://localhost:8000/docs` (disabled in production).
 app/
 ├── main.py            application entry point, CORS, health, routers
 ├── api/
-│   ├── public/        /api/content, /api/projects, /api/posts, /api/skills
-│   ├── admin/         owner-only CRUD — sections, projects, posts, skills, media
+│   ├── content/       /api/content, /api/projects, /api/posts, /api/skills, /api/experience
+│   ├── admin/         owner-only CRUD — sections, projects, posts, skills, experience, media
 │   └── auth/          Google sign-in, emailed code, session
 ├── core/
 │   ├── config.py      settings from environment

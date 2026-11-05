@@ -31,7 +31,8 @@ def test_public_reads_are_shared_cacheable_with_etag(client: TestClient) -> None
 def test_public_reads_stay_out_of_vercels_cdn(client: TestClient) -> None:
     # Vercel's CDN would otherwise keep serving the old JSON after an admin
     # save, so the site's revalidation would re-render stale content.
-    for path in ("/api/content", "/api/projects", "/api/posts", "/api/skills"):
+    for path in ("/api/content", "/api/projects", "/api/posts", "/api/skills",
+                 "/api/experience"):
         res = client.get(path)
         assert res.headers["vercel-cdn-cache-control"] == "no-store", path
         assert res.headers["cache-control"].startswith("public, s-maxage=300"), path
@@ -60,3 +61,4 @@ def test_empty_collections(client: TestClient) -> None:
     assert client.get("/api/projects").json() == []
     assert client.get("/api/posts").json() == []
     assert client.get("/api/skills").json() == []
+    assert client.get("/api/experience").json() == []

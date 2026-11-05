@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Path, Request, Response, status
 
 from app.core.http_cache import PUBLIC_CONTENT, apply_cache
 from app.security.deps import DB
-from app.services import posts, projects, sections, skills
+from app.services import experience, posts, projects, sections, skills
 
 router = APIRouter()
 
@@ -59,3 +59,9 @@ async def get_post(slug: SlugParam, request: Request, response: Response, db: DB
 @router.get("/skills")
 async def list_skills(request: Request, response: Response, db: DB) -> Any:
     return _cached(request, response, await skills.public_list(db))
+
+
+@router.get("/experience")
+async def list_experience(request: Request, response: Response, db: DB) -> Any:
+    """Companies with their roles, most recent first."""
+    return _cached(request, response, await experience.public_list(db))

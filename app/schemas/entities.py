@@ -1,9 +1,9 @@
-"""Request / response models for projects, journal posts, skills and media."""
+"""Request / response models for projects, journal posts, skills, experience and media."""
 
 from datetime import date, datetime
 from typing import Annotated, Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationInfo, field_validator, model_validator
 
 from app.schemas.common import (
     CamelModel,
@@ -182,6 +182,87 @@ class SkillPublic(CamelModel):
     icon: str | None
     featured: bool
     visible: bool
+
+
+# --- work experience ----------------------------------------------------------
+
+EmploymentType = Literal[
+    "Full-time", "Part-time", "Contract", "Freelance", "Internship", "Self-employed"
+]
+Month = Annotated[
+    str,
+    Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", json_schema_extra={"format": "month"}),
+]
+
+
+class ExperienceRoleIn(CamelModel):
+    """One position at a company. A promotion is a new role at the same company."""
+
+    title: Annotated[str, Field(min_length=1, max_length=120)]
+    employment_type: EmploymentType = "Full-time"
+    start: Month = Field(title="Start month", description="When you started this role.")
+    end: Month | None = Field(
+        default=None, title="End month", description="Leave empty while you still hold this role."
+    )
+    summary: Copy = ""
+    highlights: Annotated[
+        list[Line], Field(max_length=10, description="Shown as a + list under the role.")
+    ] = []
+    skills: Annotated[
+        list[Annotated[str, Field(max_length=40)]],
+        Field(max_length=20, json_schema_extra=widget("tags")),
+    ] = []
+
+    @field_validator("end")
+    @classmethod
+    def _not_before_start(cls, end: str | None, info: ValidationInfo) -> str | None:
+        start = info.data.get("start")
+        if end is not None and isinstance(start, str) and end < start:
+            raise ValueError("must not be before the start month")
+        return end
+
+
+class ExperienceIn(CamelModel):
+    company: Annotated[str, Field(min_length=1, max_length=120)]
+    company_url: ExternalUrl | None = Field(default=None, title="Company website")
+    logo: ImageUrl | None = Field(default=None, description="Optional logo, shown small.")
+    location: Short = Field(default="", description="e.g. Colombo, Sri Lanka · Hybrid")
+    roles: Annotated[
+        list[ExperienceRoleIn],
+        Field(
+            min_length=1,
+            max_length=20,
+            description=(
+                "Every position you held here. They are shown newest first and joined "
+                "by a line, so a promotion reads as one path."
+            ),
+        ),
+    ]
+    published: bool = Field(default=True, description="Show on the about page.")
+
+
+class ExperienceOut(ExperienceIn):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class ExperienceRolePublic(CamelModel):
+    title: str
+    employment_type: str
+    start: str
+    end: str | None
+    summary: str
+    highlights: list[str]
+    skills: list[str]
+
+
+class ExperiencePublic(CamelModel):
+    company: str
+    company_url: str | None
+    logo: str | None
+    location: str
+    roles: list[ExperienceRolePublic]
 
 
 # --- media --------------------------------------------------------------------

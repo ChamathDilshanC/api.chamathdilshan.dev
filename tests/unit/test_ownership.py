@@ -14,7 +14,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.db import Base
-from app.schemas.entities import PostIn, ProjectIn, SkillIn
+from app.schemas.entities import ExperienceIn, PostIn, ProjectIn, SkillIn
 from app.schemas.sections import SECTIONS
 from app.services.sections import SEED_FILE
 
@@ -38,7 +38,8 @@ def test_no_table_stores_an_author() -> None:
 
 
 def test_no_write_schema_has_an_author_field() -> None:
-    models = [ProjectIn, PostIn, SkillIn, *(spec.model for spec in SECTIONS.values())]
+    models = [ProjectIn, PostIn, SkillIn, ExperienceIn,
+              *(spec.model for spec in SECTIONS.values())]
     for model in models:
         schema = model.model_json_schema(by_alias=True)
         properties = {
@@ -64,6 +65,11 @@ def test_api_rejects_author_fields(signed_in: TestClient, field: str) -> None:
     assert post.status_code == 422
     skill = signed_in.post("/api/admin/skills", json={"name": "Go", field: other})
     assert skill.status_code == 422
+    job = signed_in.post("/api/admin/experience", json={
+        "company": "Acme", "roles": [{"title": "Engineer", "start": "2024-01", field: other}],
+        field: other,
+    })
+    assert job.status_code == 422
     site = signed_in.get("/api/admin/sections/site").json()["data"]
     section = signed_in.put("/api/admin/sections/site", json={**site, field: other})
     assert section.status_code == 422

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.integrations import cloudinary
-from app.models import Media, Post, Project, Section, Skill
+from app.models import Experience, Media, Post, Project, Section, Skill
 from app.schemas.entities import MediaOut, MediaRegister, MediaUsage
 from app.schemas.sections import SECTIONS
 from app.services.common import not_found
@@ -119,6 +119,9 @@ async def usages(db: AsyncSession, row: Media) -> list[MediaUsage]:
     for skill in await db.scalars(select(Skill)):
         if skill.icon and needle in skill.icon:
             found.append(MediaUsage(where=f"skill:{skill.id}", label=skill.name))
+    for job in await db.scalars(select(Experience)):
+        if job.logo and needle in job.logo:
+            found.append(MediaUsage(where=f"experience:{job.id}", label=job.company))
     return found
 
 
