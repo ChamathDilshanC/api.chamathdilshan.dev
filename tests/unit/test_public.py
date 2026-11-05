@@ -28,6 +28,29 @@ def test_public_reads_are_shared_cacheable_with_etag(client: TestClient) -> None
     assert again.status_code == 304
 
 
+def test_public_reads_stay_out_of_vercels_cdn(client: TestClient) -> None:
+    # Vercel's CDN would otherwise keep serving the old JSON after an admin
+    # save, so the site's revalidation would re-render stale content.
+    for path in ("/api/content", "/api/projects", "/api/posts", "/api/skills"):
+        res = client.get(path)
+        assert res.headers["vercel-cdn-cache-control"] == "no-store", path
+        assert res.headers["cache-control"].startswith("public, s-maxage=300"), path
+        again = client.get(path, headers={"If-None-Match": res.headers["etag"]})
+        assert again.status_code == 304
+        assert again.headers["vercel-cdn-cache-control"] == "no-store", path
+
+
+def test_private_and_immutable_policies_leave_vercels_cdn_alone() -> None:
+    from fastapi import Response
+
+    from app.core.http_cache import IMMUTABLE, PRIVATE, apply_cache
+
+    for policy in (PRIVATE, IMMUTABLE):
+        response = Response()
+        apply_cache(response, policy)
+        assert "vercel-cdn-cache-control" not in response.headers
+
+
 def test_unknown_project_is_404(client: TestClient) -> None:
     assert client.get("/api/projects/does-not-exist").status_code == 404
     assert client.get("/api/projects/Bad Slug!").status_code in (404, 422)

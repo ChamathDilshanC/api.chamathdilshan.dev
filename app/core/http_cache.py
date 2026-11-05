@@ -19,6 +19,15 @@ PRIVATE = "private, no-store, max-age=0"
 # long-lived, content-hashed assets only
 IMMUTABLE = "public, max-age=31536000, immutable"
 
+# Vercel's CDN applies s-maxage / stale-while-revalidate to function responses,
+# and nothing purges it when an admin saves, so the site's on-demand
+# revalidation would re-read the old JSON. The site already caches these reads
+# itself (Next.js Data Cache + ISR, cleared via /api/revalidate), so keep them
+# out of Vercel's CDN only. Vercel consumes this header; Cache-Control still
+# reaches browsers and any other CDN unchanged.
+VERCEL_CDN_HEADER = "Vercel-CDN-Cache-Control"
+VERCEL_CDN_NO_STORE = "no-store"
+
 
 def apply_cache(response: Response, policy: str, body: bytes | None = None) -> None:
     """Attach the cache policy, Vary, and an ETag for conditional requests."""
@@ -28,6 +37,8 @@ def apply_cache(response: Response, policy: str, body: bytes | None = None) -> N
         response.headers["Vary"] = "Cookie, Authorization"
         return
 
+    if policy != IMMUTABLE:
+        response.headers[VERCEL_CDN_HEADER] = VERCEL_CDN_NO_STORE
     response.headers["Vary"] = "Accept-Encoding"
     if body is not None:
         digest = hashlib.sha256(body).hexdigest()[:32]
