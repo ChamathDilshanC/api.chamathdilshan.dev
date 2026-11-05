@@ -7,8 +7,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.admin.routes import router as admin_router
+from app.api.auth.routes import router as auth_router
+from app.api.public.routes import router as public_router
 from app.core.config import settings
+from app.core.db import dispose_engine
 from app.core.http_cache import no_store
+from app.security.tokens import session_secret
 
 logging.basicConfig(level=settings.LOG_LEVEL.upper())
 log = logging.getLogger(__name__)
@@ -17,19 +22,24 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     log.info("starting api in %s mode", settings.APP_ENV)
+    session_secret()  # fail fast in production when SESSION_SECRET is missing
+    if not settings.admin_email:
+        log.warning("ADMIN_EMAIL is not set — nobody can sign in to the admin panel")
     yield
     from app.core.cache import get_redis
 
     redis = get_redis()
     if redis is not None:
         await redis.aclose()
+    await dispose_engine()
 
 
 app = FastAPI(
     title="chamathdilshan.dev API",
-    version="0.1.0",
+    version="0.2.0",
     docs_url=None if settings.is_production else "/docs",
     redoc_url=None,
+    openapi_url=None if settings.is_production else "/openapi.json",
     lifespan=lifespan,
 )
 
@@ -39,8 +49,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "If-None-Match"],
+    max_age=600,
 )
 
 
@@ -50,12 +61,6 @@ async def health(response: Response) -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Routers are registered here as they are implemented:
-#
-# from app.api.public import profile, projects, blog, research, contact, search
-# from app.api.admin  import dashboard, projects as admin_projects, media, settings
-# from app.api.auth   import github
-#
-# app.include_router(github.router,  prefix="/api/auth",  tags=["auth"])
-# app.include_router(profile.router, prefix="/api",       tags=["public"])
-# app.include_router(dashboard.router, prefix="/api/admin", tags=["admin"])
+app.include_router(public_router, prefix="/api", tags=["public"])
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])

@@ -1,0 +1,1022 @@
+{
+  "sections": {
+    "site": {
+      "name": "Chamath Dilshan",
+      "wordmark": "CHAMATH",
+      "logo": "CHAMATH",
+      "email": "hello@chamathdilshan.dev",
+      "year": "2026",
+      "github": "https://github.com/ChamathDilshanC",
+      "description": "Software engineer building fast, accessible web apps, APIs and cloud platforms."
+    },
+    "navigation": {
+      "items": [
+        {
+          "key": "home",
+          "title": "Home",
+          "href": "/"
+        },
+        {
+          "key": "projects",
+          "title": "Projects",
+          "href": "/projects"
+        },
+        {
+          "key": "about",
+          "title": "About",
+          "href": "/about"
+        },
+        {
+          "key": "journal",
+          "title": "Journal",
+          "href": "/blog"
+        },
+        {
+          "key": "contact",
+          "title": "Contact",
+          "href": "/contact"
+        }
+      ]
+    },
+    "faq": {
+      "title": "FAQ",
+      "reel": {
+        "image": "/images/placeholders/reel.jpg",
+        "label": "Open",
+        "meta": "GitHub",
+        "href": "https://github.com/ChamathDilshanC"
+      },
+      "items": [
+        {
+          "question": "What kind of projects do you take on?",
+          "answer": "Web apps, APIs and internal tools, from a first MVP to new features on a mature product. If it runs in a browser or behind one, I can probably help."
+        },
+        {
+          "question": "Why hire an independent engineer over an agency?",
+          "answer": "You talk directly to the person writing the code. Decisions are faster, nothing gets lost in handoffs, and you pay for engineering rather than overhead."
+        },
+        {
+          "question": "Can you join an existing codebase?",
+          "answer": "Yes. I start by reading the code, running it locally and shipping a small fix, so we both learn how the project works before taking on bigger pieces."
+        },
+        {
+          "question": "How long does a typical project take?",
+          "answer": "Small features land within days. A first release of a new product usually takes four to eight weeks, with a timeline agreed before work starts."
+        },
+        {
+          "question": "Do you take on one-off projects?",
+          "answer": "Yes. Fixed-scope projects get a clear price, a clear timeline and the same care as ongoing work."
+        }
+      ]
+    },
+    "footer": {
+      "heading": "Let’s work together",
+      "cta": {
+        "label": "Contact Now",
+        "href": "/contact"
+      },
+      "copyright": "© {year}, All Rights Reserved",
+      "credit": {
+        "label": "Code on",
+        "linkLabel": "GitHub",
+        "href": "https://github.com/ChamathDilshanC"
+      }
+    },
+    "home.layout": {
+      "sections": [
+        {
+          "section": "about",
+          "visible": true
+        },
+        {
+          "section": "stack",
+          "visible": true
+        },
+        {
+          "section": "work",
+          "visible": true
+        },
+        {
+          "section": "services",
+          "visible": true
+        },
+        {
+          "section": "pricing",
+          "visible": true
+        },
+        {
+          "section": "testimonials",
+          "visible": true
+        },
+        {
+          "section": "cta",
+          "visible": true
+        },
+        {
+          "section": "numbers",
+          "visible": true
+        },
+        {
+          "section": "journal",
+          "visible": true
+        }
+      ]
+    },
+    "home.hero": {
+      "image": "/images/placeholders/hero-trails.jpg",
+      "imageAlt": "Abstract orange light with flowing light trails over a dark form",
+      "intro": {
+        "line1": "Share the idea, set the goal,",
+        "line2": "and your product ",
+        "line2Dim": "takes shape",
+        "line3Dim": "one sprint at a time."
+      },
+      "cta": {
+        "label": "Explore Now",
+        "href": "/about"
+      },
+      "disciplines": [
+        "Frontend",
+        "Backend",
+        "Cloud"
+      ]
+    },
+    "home.about": {
+      "title": "About",
+      "aside": "Independent engineer",
+      "statement": "Independent software engineer building fast, accessible web apps, APIs and cloud platforms for ambitious teams that plan for tomorrow.",
+      "image": "/images/placeholders/about.jpg",
+      "imageAlt": "Two dark forms in deep red light",
+      "pre": "Every build starts with listening. I dig into your users, constraints and goals before writing a single line, so the product has a clear reason to exist.",
+      "post": "After launch I stay close. I monitor, tune and extend what we shipped as your team grows, so the product keeps working long after release.",
+      "results": [
+        {
+          "label": "Projects shipped",
+          "value": "24"
+        },
+        {
+          "label": "Years building",
+          "value": "5"
+        }
+      ],
+      "cta": {
+        "label": "Explore Now",
+        "href": "/about"
+      }
+    },
+    "home.work": {
+      "title": "Selected Work",
+      "aside": "2023 — 2026",
+      "cta": {
+        "label": "Work With Me",
+        "href": "/contact"
+      },
+      "seeAllThumb": "/images/placeholders/thumb.jpg"
+    },
+    "home.services": {
+      "title": "Services",
+      "aside": "Frontend · Backend · Cloud",
+      "statement": "Independent engineer making web apps, APIs and cloud platforms that help ambitious teams ship faster and sleep better, by Chamath.",
+      "poster": "/images/placeholders/service-poster.jpg",
+      "posterAlt": "A dark curved form against an orange field",
+      "cta": {
+        "label": "Explore More",
+        "href": "/about"
+      },
+      "items": [
+        {
+          "number": "01",
+          "title": "Frontend",
+          "heading": "Web Applications",
+          "body": "React and Next.js interfaces that load fast, read clearly and stay accessible, built on components your team can keep extending.",
+          "image": "/images/placeholders/service-1.jpg"
+        },
+        {
+          "number": "02",
+          "title": "Backend",
+          "heading": "APIs & Data",
+          "body": "FastAPI and Postgres services with clear contracts, caching and tests, so new features ship without breaking what already works.",
+          "image": "/images/placeholders/service-2.jpg"
+        },
+        {
+          "number": "03",
+          "title": "Cloud",
+          "heading": "Infrastructure",
+          "body": "CI/CD pipelines, containers and cloud deploys with monitoring built in, so releases are routine and downtime is rare.",
+          "image": "/images/placeholders/service-3.jpg"
+        }
+      ]
+    },
+    "home.pricing": {
+      "title": "Engagements",
+      "aside": "Three ways to work",
+      "includedHeading": "What’s included",
+      "plans": [
+        {
+          "name": "Starter",
+          "description": "For founders who need a fast, solid first release.",
+          "price": "1999",
+          "unit": "/ Project",
+          "tone": "light",
+          "included": [
+            "Landing page or MVP build",
+            "Responsive, accessible UI",
+            "Deployment and handover"
+          ]
+        },
+        {
+          "name": "Product",
+          "description": "For teams that need an engineer on call every month.",
+          "price": "4999",
+          "unit": "/ Month",
+          "tone": "light",
+          "included": [
+            "Landing page or MVP build",
+            "Responsive, accessible UI",
+            "Deployment and handover",
+            "API and database design",
+            "Weekly progress calls",
+            "Analytics and monitoring"
+          ]
+        },
+        {
+          "name": "Partner",
+          "description": "A dedicated engineer for products in a big moment.",
+          "price": "8999",
+          "unit": "/ Month",
+          "tone": "dark",
+          "included": [
+            "Landing page or MVP build",
+            "Responsive, accessible UI",
+            "Deployment and handover",
+            "API and database design",
+            "Weekly progress calls",
+            "Analytics and monitoring",
+            "Priority fixes and support",
+            "Unlimited requests and revisions"
+          ]
+        }
+      ],
+      "cta": {
+        "label": "Get Started",
+        "href": "/contact"
+      }
+    },
+    "home.testimonials": {
+      "title": "Testimonials",
+      "aside": "From recent partners",
+      "items": [
+        {
+          "quote": "Replace this with a real quote from a client or teammate. Two or three sentences about what you built together and the difference it made work best.",
+          "name": "Client Name",
+          "role": "Founder",
+          "company": "Company",
+          "project": "monolith-cms"
+        },
+        {
+          "quote": "Specific details make a testimonial believable: a launch date, a metric that moved, or how the work felt day to day. Keep it in their own words.",
+          "name": "Client Name",
+          "role": "CTO",
+          "company": "Company",
+          "project": "northwind-store"
+        },
+        {
+          "quote": "Ask someone you shipped with what they would tell a friend about working with you. Short, honest quotes read better than long, polished ones.",
+          "name": "Client Name",
+          "role": "Product Lead",
+          "company": "Company",
+          "project": "haven-stays"
+        },
+        {
+          "quote": "Edit these in the admin panel under Sections → Testimonials, then add their name, role and the project you worked on.",
+          "name": "Client Name",
+          "role": "Co-founder",
+          "company": "Company",
+          "project": "stride"
+        }
+      ]
+    },
+    "home.cta": {
+      "marquee": "Software Made For Tomorrow, By Chamath",
+      "background": "/images/placeholders/cta.jpg",
+      "backgroundAlt": "Dusk light over a pool and dark walls",
+      "portrait": "/images/placeholders/cta-portrait.jpg",
+      "portraitAlt": "A dark column in glowing amber smoke",
+      "action": {
+        "label": "Contact Now",
+        "href": "/contact"
+      }
+    },
+    "home.numbers": {
+      "title": "In Numbers",
+      "aside": "Building since 2021",
+      "items": [
+        {
+          "value": "24+",
+          "title": "Projects Shipped",
+          "body": "Web apps, APIs and internal tools for startups, agencies and product teams since 2021."
+        },
+        {
+          "value": "5",
+          "title": "Years Building",
+          "body": "Writing production code since 2021, from first freelance builds to full product teams."
+        },
+        {
+          "value": "12",
+          "title": "Open-Source Repos",
+          "body": "Libraries, starters and experiments published on GitHub for anyone to use and learn from."
+        },
+        {
+          "value": "3",
+          "title": "Hackathon Awards",
+          "body": "Recognition for fast, well-built prototypes, though the best result is a user who comes back."
+        }
+      ]
+    },
+    "home.journal": {
+      "title": "Journal",
+      "aside": "Notes from the desk",
+      "cta": {
+        "label": "View All Articles",
+        "href": "/blog"
+      }
+    },
+    "page.projects": {
+      "title": [
+        "Latest",
+        "Projects"
+      ],
+      "image": "/images/placeholders/projects-hero.jpg",
+      "imageAlt": "Hazy coastal light over a dark rock",
+      "description": "Web apps, APIs and platforms for teams I believe in",
+      "listTitle": "All Work",
+      "listAside": "Case studies, 2023 — 2026"
+    },
+    "page.blog": {
+      "title": [
+        "Latest",
+        "Journal"
+      ],
+      "image": "/images/placeholders/blog-hero.jpg",
+      "imageAlt": "A green ring of light around a dark centre",
+      "description": "Notes on code, product and craft from my desk",
+      "listTitle": "All Articles",
+      "listAside": "Notes from the desk"
+    },
+    "page.about": {
+      "title": "Hi, I’m Chamath",
+      "image": "/images/placeholders/about-hero.jpg",
+      "imageAlt": "A dark profile in violet light",
+      "label": "(Who I Am)",
+      "blurb": "An independent engineer building web products for clients worldwide."
+    },
+    "about.process": {
+      "title": "Process",
+      "aside": "Three steps, one engineer",
+      "statement": "Since 2021 I have helped founders and teams turn good ideas into products people use, trust and recommend. Software made for tomorrow.",
+      "image": "/images/placeholders/about-process.jpg",
+      "imageAlt": "Warm orange folds of light",
+      "steps": [
+        {
+          "number": "001",
+          "title": "Discover",
+          "body": "I start by listening. Calls, a look at your users and a review of what already exists show what makes the product different and what it needs first.",
+          "included": [
+            "Discovery call & workshop",
+            "User and competitor review",
+            "Technical audit of what exists"
+          ]
+        },
+        {
+          "number": "002",
+          "title": "Build",
+          "body": "I design the data, the API and the interface together, shipping small working slices you can click through every week instead of one big reveal.",
+          "included": [
+            "Weekly demos on a live URL",
+            "Typed APIs with tests",
+            "Accessible, responsive UI"
+          ]
+        },
+        {
+          "number": "003",
+          "title": "Launch",
+          "body": "I harden, measure and hand over, with docs, monitoring and a deploy pipeline, so your team can keep shipping long after launch day.",
+          "included": [
+            "CI/CD and monitoring",
+            "Docs and handover session",
+            "30 days of launch support"
+          ]
+        }
+      ]
+    },
+    "about.toolbox": {
+      "title": "Toolbox",
+      "aside": "What I use every day",
+      "items": [
+        {
+          "name": "VS Code",
+          "role": "Editor",
+          "image": "/images/placeholders/team-1.jpg"
+        },
+        {
+          "name": "Figma",
+          "role": "Design",
+          "image": "/images/placeholders/team-2.jpg"
+        },
+        {
+          "name": "Docker",
+          "role": "Containers",
+          "image": "/images/placeholders/team-3.jpg"
+        },
+        {
+          "name": "GitHub Actions",
+          "role": "CI/CD",
+          "image": "/images/placeholders/team-4.jpg"
+        },
+        {
+          "name": "Supabase",
+          "role": "Data & Auth",
+          "image": "/images/placeholders/detail-3.jpg"
+        }
+      ]
+    },
+    "about.recognition": {
+      "title": "Recognition",
+      "aside": "Awards & certificates",
+      "rows": [
+        {
+          "count": "1×",
+          "award": "Hackathon Winner",
+          "project": "Project Name",
+          "result": "Winner"
+        },
+        {
+          "count": "2×",
+          "award": "Hackathon Finalist",
+          "project": "Project Name",
+          "result": "Finalist"
+        },
+        {
+          "count": "1×",
+          "award": "Cloud Certification",
+          "project": "Provider Name",
+          "result": "Certified"
+        },
+        {
+          "count": "3×",
+          "award": "Open-Source Feature",
+          "project": "Repository Name",
+          "result": "Featured"
+        },
+        {
+          "count": "1×",
+          "award": "Best Use of AI",
+          "project": "Project Name",
+          "result": "Shortlist"
+        }
+      ]
+    },
+    "about.stack": {
+      "title": "Stack",
+      "aside": "Tools I build with"
+    },
+    "page.contact": {
+      "title": "Let’s Talk",
+      "intro": "Tell me about your product and what you need, and I will reply within one working day.",
+      "image": "/images/placeholders/contact.jpg",
+      "imageAlt": "A dark curved form against an orange field",
+      "categories": [
+        {
+          "value": "new-product",
+          "title": "New product",
+          "description": "Design and build something from scratch.",
+          "icon": "rocket"
+        },
+        {
+          "value": "existing-codebase",
+          "title": "Existing codebase",
+          "description": "New features, fixes or a cleanup.",
+          "icon": "code"
+        },
+        {
+          "value": "api-backend",
+          "title": "API or backend",
+          "description": "Endpoints, data models and integrations.",
+          "icon": "server"
+        },
+        {
+          "value": "consulting",
+          "title": "Consulting",
+          "description": "Architecture review or a second opinion.",
+          "icon": "bulb"
+        },
+        {
+          "value": "something-else",
+          "title": "Something else",
+          "description": "Tell me about it in the message.",
+          "icon": "sparkles"
+        }
+      ]
+    }
+  },
+  "projects": [
+    {
+      "slug": "monolith-cms",
+      "title": "Monolith CMS",
+      "category": "Headless CMS",
+      "year": "2025",
+      "summary": "A calm, fast editing experience for a publisher with a decade of content.",
+      "thumbnail": {
+        "url": "/images/placeholders/work-1.jpg",
+        "alt": "Monochrome light falling across a dark fold"
+      },
+      "hero": {
+        "kind": "image",
+        "url": "/images/placeholders/work-1.jpg",
+        "alt": "Monochrome light falling across a dark fold",
+        "poster": null
+      },
+      "intro": "A headless CMS and editor for a publishing team, built around structured content, instant previews and a schema that grows with the newsroom.",
+      "discover": "I spent the first week with editors, timing how long everyday tasks took and mapping every content type they had invented over the years.",
+      "explore": "We prototyped three editing flows on real articles, then kept the one that let editors publish without leaving the page they were writing on.",
+      "results": [
+        {
+          "label": "Publish time",
+          "value": "−42%"
+        },
+        {
+          "label": "Page speed",
+          "value": "98/100"
+        }
+      ],
+      "gallery": [
+        {
+          "kind": "image",
+          "url": "/images/placeholders/detail-1.jpg",
+          "alt": "Warm light blurred by movement",
+          "poster": null
+        },
+        {
+          "kind": "image",
+          "url": "/images/placeholders/detail-2.jpg",
+          "alt": "A white fold on a pale grey ground",
+          "poster": null
+        },
+        {
+          "kind": "image",
+          "url": "/images/placeholders/detail-3.jpg",
+          "alt": "A white form on a dark ground",
+          "poster": null
+        }
+      ],
+      "tech": [
+        "Next.js",
+        "TypeScript",
+        "PostgreSQL"
+      ],
+      "liveUrl": null,
+      "repoUrl": null,
+      "featured": true
+    },
+    {
+      "slug": "northwind-store",
+      "title": "Northwind Store",
+      "category": "E-commerce & Web",
+      "year": "2025",
+      "summary": "A storefront and order system for an independent skincare label.",
+      "thumbnail": {
+        "url": "/images/placeholders/work-2.jpg",
+        "alt": "Amber bottles on a warm neutral set"
+      },
+      "hero": {
+        "kind": "image",
+        "url": "/images/placeholders/work-2.jpg",
+        "alt": "Amber bottles on a warm neutral set",
+        "poster": null
+      },
+      "intro": "A storefront, checkout and order dashboard for an independent skincare label, designed to load instantly on phones and stay simple to run.",
+      "discover": "Order data showed most visitors arrived on mobile from social links, so every decision started with a phone on a slow connection.",
+      "explore": "I tested checkout variations against real orders and landed on a single page flow with saved carts and wallet payments.",
+      "results": [
+        {
+          "label": "Conversion",
+          "value": "+31%"
+        },
+        {
+          "label": "Checkout time",
+          "value": "1.8x faster"
+        }
+      ],
+      "gallery": [
+        {
+          "kind": "image",
+          "url": "/images/placeholders/work-2.jpg",
+          "alt": "Amber bottles on a warm neutral set",
+          "poster": null
+        },
+        {
+          "kind": "image",
+          "url": "/images/placeholders/journal-3.jpg",
+          "alt": "A cream fold catching warm light",
+          "poster": null
+        },
+        {
+          "kind": "image",
+          "url": "/images/placeholders/service-3.jpg",
+          "alt": "A dark vase on a wooden bench",
+          "poster": null
+        }
+      ],
+      "tech": [
+        "React",
+        "FastAPI",
+        "Stripe"
+      ],
+      "liveUrl": null,
+      "repoUrl": null,
+      "featured": true
+    },
+    {
+      "slug": "haven-stays",
+      "title": "Haven Stays",
+      "category": "Booking Platform",
+      "year": "2024",
+      "summary": "Bookings, payments and calendars for a group of boutique rentals.",
+      "thumbnail": {
+        "url": "/images/placeholders/work-3.jpg",
+        "alt": "A bright, minimal bedroom interior"
+      },
+      "hero": {
+        "kind": "image",
+        "url": "/images/placeholders/work-3.jpg",
+        "alt": "A bright, minimal bedroom interior",
+        "poster": null
+      },
+      "intro": "A booking platform for a group of boutique rentals, joining availability, payments and guest messages into one quiet, reliable system.",
+      "discover": "Hosts were juggling four calendars and a spreadsheet. I mapped every double booking from the last year to find where things went wrong.",
+      "explore": "A single source of truth for availability, synced both ways with the big listing sites, removed the spreadsheet entirely.",
+      "results": [
+        {
+          "label": "Double bookings",
+          "value": "0"
+        },
+        {
+          "label": "Direct bookings",
+          "value": "+54%"
+        }
+      ],
+      "gallery": [
+        {
+          "kind": "image",
+          "url": "/images/placeholders/work-3.jpg",
+          "alt": "A bright, minimal bedroom interior",
+          "poster": null
+        },
+        {
+          "kind": "image",
+          "url": "/images/placeholders/journal-2.jpg",
+          "alt": "Concrete blocks against a pale sky",
+          "poster": null
+        },
+        {
+          "kind": "image",
+          "url": "/images/placeholders/service-1.jpg",
+          "alt": "A calm sea horizon at dusk",
+          "poster": null
+        }
+      ],
+      "tech": [
+        "Next.js",
+        "Supabase"
+      ],
+      "liveUrl": null,
+      "repoUrl": null,
+      "featured": true
+    },
+    {
+      "slug": "stride",
+      "title": "Stride",
+      "category": "Fitness App",
+      "year": "2024",
+      "summary": "A training app and real-time leaderboard for a running club.",
+      "thumbnail": {
+        "url": "/images/placeholders/work-4.jpg",
+        "alt": "Green and amber streaks of fast motion"
+      },
+      "hero": {
+        "kind": "image",
+        "url": "/images/placeholders/work-4.jpg",
+        "alt": "Green and amber streaks of fast motion",
+        "poster": null
+      },
+      "intro": "A training app and real-time leaderboard for a running club, turning weekly runs into shared goals that members actually come back for.",
+      "discover": "Club organisers wanted fewer group chats and more runs. I followed three weekly sessions to see how members planned and logged them.",
+      "explore": "Live leaderboards and streaks tested best, so we built them on a realtime database with offline logging for runs without signal.",
+      "results": [
+        {
+          "label": "Weekly active",
+          "value": "+2.1x"
+        },
+        {
+          "label": "Runs logged",
+          "value": "18k"
+        }
+      ],
+      "gallery": [
+        {
+          "kind": "image",
+          "url": "/images/placeholders/work-4.jpg",
+          "alt": "Green and amber streaks of fast motion",
+          "poster": null
+        },
+        {
+          "kind": "image",
+          "url": "/images/placeholders/journal-4.jpg",
+          "alt": "Red light blurred across a pale ground",
+          "poster": null
+        },
+        {
+          "kind": "image",
+          "url": "/images/placeholders/about.jpg",
+          "alt": "Two dark forms in deep red light",
+          "poster": null
+        }
+      ],
+      "tech": [
+        "React Native",
+        "Supabase"
+      ],
+      "liveUrl": null,
+      "repoUrl": null,
+      "featured": true
+    }
+  ],
+  "posts": [
+    {
+      "slug": "designing-apis-that-last",
+      "title": "Designing APIs that last",
+      "category": "Backend",
+      "date": "2026-03-18",
+      "excerpt": "Endpoints outlive the screens that first call them. Here is how I design APIs that are still pleasant to use years later.",
+      "cover": {
+        "url": "/images/placeholders/journal-1.jpg",
+        "alt": "Pale, blurred forms in motion"
+      },
+      "sections": [
+        {
+          "title": "Start From the Client",
+          "paragraphs": [
+            "Before writing a route, I write the code that will call it. If the request is awkward to build or the response needs three follow-up calls, the design is wrong, and it is far cheaper to find out now.",
+            "That habit keeps endpoints small and shaped around real tasks rather than database tables."
+          ],
+          "images": [
+            {
+              "url": "/images/placeholders/detail-1.jpg",
+              "alt": "Warm light blurred by movement"
+            },
+            {
+              "url": "/images/placeholders/work-4.jpg",
+              "alt": "Green and amber streaks of fast motion"
+            }
+          ]
+        },
+        {
+          "title": "Name Things Once",
+          "paragraphs": [
+            "Every concept gets one name across the database, the API and the interface. When a field is called status in one place and state in another, every new developer pays for it.",
+            "A short glossary in the repository settles arguments before they reach code review."
+          ],
+          "images": [
+            {
+              "url": "/images/placeholders/service-1.jpg",
+              "alt": "A calm sea horizon at dusk"
+            }
+          ]
+        },
+        {
+          "title": "Version by Addition",
+          "paragraphs": [
+            "Most breaking changes can be avoided by adding instead of changing. New fields are optional, old fields stay until nothing reads them, and deprecations are announced with dates."
+          ],
+          "images": [
+            {
+              "url": "/images/placeholders/journal-2.jpg",
+              "alt": "Concrete blocks against a pale sky"
+            }
+          ]
+        },
+        {
+          "title": "Test the Contract",
+          "paragraphs": [
+            "Types catch typos, but contract tests catch broken promises. I keep a small suite that calls the API the way real clients do and fails loudly when a response changes shape.",
+            "Generated client types from the OpenAPI schema close the loop, so the frontend learns about a change at build time instead of in production."
+          ],
+          "images": []
+        }
+      ]
+    },
+    {
+      "slug": "the-case-for-less-javascript",
+      "title": "The case for less JavaScript",
+      "category": "Frontend",
+      "date": "2026-02-04",
+      "excerpt": "Every kilobyte has to be downloaded, parsed and run on someone’s phone. Shipping less is the fastest optimisation there is.",
+      "cover": {
+        "url": "/images/placeholders/journal-2.jpg",
+        "alt": "Concrete blocks against a pale sky"
+      },
+      "sections": [
+        {
+          "title": "Render on the Server",
+          "paragraphs": [
+            "Most of a page never changes after it loads. Rendering that part on the server means visitors see content immediately and their phones never download the code that produced it."
+          ],
+          "images": [
+            {
+              "url": "/images/placeholders/work-1.jpg",
+              "alt": "Monochrome light falling across a dark fold"
+            },
+            {
+              "url": "/images/placeholders/detail-2.jpg",
+              "alt": "A white fold on a pale grey ground"
+            }
+          ]
+        },
+        {
+          "title": "Islands of Interaction",
+          "paragraphs": [
+            "Interactivity goes where it is needed and nowhere else: a menu, a form, a carousel. Each island loads its own small bundle, and a slow widget never blocks the rest of the page."
+          ],
+          "images": [
+            {
+              "url": "/images/placeholders/journal-3.jpg",
+              "alt": "A cream fold catching warm light"
+            }
+          ]
+        },
+        {
+          "title": "Measure on Real Phones",
+          "paragraphs": [
+            "A fast laptop hides problems. I test on a mid-range phone over a throttled connection, because that is what many visitors actually use.",
+            "Core Web Vitals from real sessions are the scoreboard, not a lab score on a developer machine."
+          ],
+          "images": []
+        }
+      ]
+    },
+    {
+      "slug": "shipping-on-a-small-budget",
+      "title": "Shipping on a small budget",
+      "category": "Cloud",
+      "date": "2025-12-10",
+      "excerpt": "You do not need a platform team to deploy safely. A few boring choices go a long way when every hour and every dollar counts.",
+      "cover": {
+        "url": "/images/placeholders/journal-3.jpg",
+        "alt": "A cream fold catching warm light"
+      },
+      "sections": [
+        {
+          "title": "Pick Managed Services",
+          "paragraphs": [
+            "A managed database and a managed host cost a little more per month and save days every quarter. Patching servers is rarely the best use of a small team."
+          ],
+          "images": [
+            {
+              "url": "/images/placeholders/service-2.jpg",
+              "alt": "Light beams converging in the dark"
+            },
+            {
+              "url": "/images/placeholders/service-3.jpg",
+              "alt": "A dark vase on a wooden bench"
+            }
+          ]
+        },
+        {
+          "title": "Automate the Path to Production",
+          "paragraphs": [
+            "Every push runs lint, type checks, tests and a build. When all four pass, the same pipeline deploys. Releases become routine instead of events."
+          ],
+          "images": [
+            {
+              "url": "/images/placeholders/cta.jpg",
+              "alt": "Dusk light over a pool and dark walls"
+            }
+          ]
+        },
+        {
+          "title": "Watch What Matters",
+          "paragraphs": [
+            "Three alerts cover most problems: errors are up, the site is slow, or a background job stopped. Anything noisier gets ignored, so I keep the list short."
+          ],
+          "images": []
+        }
+      ]
+    },
+    {
+      "slug": "choosing-a-stack-that-lasts",
+      "title": "Choosing a stack that lasts",
+      "category": "Architecture",
+      "date": "2025-10-22",
+      "excerpt": "The best stack is the one your team can still hire for, debug and upgrade in three years. Fashion is a poor guide.",
+      "cover": {
+        "url": "/images/placeholders/journal-4.jpg",
+        "alt": "Red light blurred across a pale ground"
+      },
+      "sections": [
+        {
+          "title": "Boring Is a Feature",
+          "paragraphs": [
+            "Mature tools have answers for problems you have not met yet. I reach for proven foundations and save experiments for places where they can fail safely."
+          ],
+          "images": [
+            {
+              "url": "/images/placeholders/about.jpg",
+              "alt": "Two dark forms in deep red light"
+            },
+            {
+              "url": "/images/placeholders/journal-4.jpg",
+              "alt": "Red light blurred across a pale ground"
+            }
+          ]
+        },
+        {
+          "title": "Fewer Moving Parts",
+          "paragraphs": [
+            "Each new service, queue or language is something to deploy, monitor and learn. A single well-structured app often beats a constellation of tiny ones for a small team."
+          ],
+          "images": [
+            {
+              "url": "/images/placeholders/work-3.jpg",
+              "alt": "A bright, minimal bedroom interior"
+            }
+          ]
+        },
+        {
+          "title": "Plan the Upgrade",
+          "paragraphs": [
+            "Frameworks change every year. Pinning versions, reading release notes and upgrading in small steps keeps a codebase current without heroic rewrites."
+          ],
+          "images": []
+        }
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "name": "Next.js",
+      "category": "Frontend",
+      "icon": null,
+      "featured": true,
+      "visible": true
+    },
+    {
+      "name": "React",
+      "category": "Frontend",
+      "icon": null,
+      "featured": true,
+      "visible": true
+    },
+    {
+      "name": "TypeScript",
+      "category": "Frontend",
+      "icon": null,
+      "featured": true,
+      "visible": true
+    },
+    {
+      "name": "Tailwind CSS",
+      "category": "Frontend",
+      "icon": null,
+      "featured": false,
+      "visible": true
+    },
+    {
+      "name": "Python",
+      "category": "Backend",
+      "icon": null,
+      "featured": false,
+      "visible": true
+    },
+    {
+      "name": "FastAPI",
+      "category": "Backend",
+      "icon": null,
+      "featured": true,
+      "visible": true
+    },
+    {
+      "name": "PostgreSQL",
+      "category": "Backend",
+      "icon": null,
+      "featured": true,
+      "visible": true
+    },
+    {
+      "name": "Supabase",
+      "category": "Backend",
+      "icon": null,
+      "featured": true,
+      "visible": true
+    }
+  ]
+}
