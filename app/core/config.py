@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     OTP_MAX_SENDS: int = 4
     OTP_RESEND_COOLDOWN_SECONDS: int = 30
 
+    # --- Contact form (Resend) ---
+    # Inbox that receives contact-form messages. Empty means ADMIN_EMAIL.
+    CONTACT_TO: str = ""
+
     # --- Sessions ---
     SESSION_SECRET: str = ""
     SESSION_COOKIE_NAME: str = "pf_session"
@@ -66,6 +70,7 @@ class Settings(BaseSettings):
 
     # --- Rate limiting (SECURITY.md §20) ---
     RATE_LIMIT_AUTH_PER_MINUTE: int = 10
+    RATE_LIMIT_CONTACT_PER_HOUR: int = 5
 
     # --- Observability ---
     LOG_LEVEL: str = "info"
@@ -92,6 +97,10 @@ class Settings(BaseSettings):
     @property
     def admin_email(self) -> str:
         return self.ADMIN_EMAIL.strip().lower()
+
+    @property
+    def contact_to(self) -> str:
+        return self.CONTACT_TO.strip().lower() or self.admin_email
 
     @property
     def google_configured(self) -> bool:

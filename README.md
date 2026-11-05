@@ -1,7 +1,8 @@
 # api.chamathdilshan.dev — Backend
 
 FastAPI service providing the content API behind every editable part of the
-site, owner-only sign-in (Google + emailed code via Resend), Cloudinary media,
+site, owner-only sign-in (Google + emailed code via Resend), the contact form
+(emailed to the owner via Resend), Cloudinary media,
 caching and audit logging for the chamathdilshan.dev platform.
 
 Setup and usage of the admin panel: `docs/ADMIN_CMS.md` in the main repo.
@@ -36,6 +37,7 @@ app/
 ├── main.py            application entry point, CORS, health, routers
 ├── api/
 │   ├── content/       /api/content, /api/projects, /api/posts, /api/skills, /api/experience
+│   ├── contact/       POST /api/contact — contact form emailed to the owner
 │   ├── admin/         owner-only CRUD — sections, projects, posts, skills, experience, media
 │   └── auth/          Google sign-in, emailed code, session
 ├── core/
