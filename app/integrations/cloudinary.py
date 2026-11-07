@@ -94,3 +94,30 @@ async def destroy(public_id: str, resource_type: str) -> None:
     result = res.json().get("result")
     if result not in {"ok", "not found"}:
         raise CloudinaryError(f"Cloudinary could not delete the asset: {result}")
+
+
+async def rename(public_id: str, target_public_id: str, resource_type: str) -> dict[str, Any]:
+    """Move an asset to another folder while keeping its Cloudinary resource type."""
+    timestamp = int(time.time())
+    params: dict[str, Any] = {
+        "from_public_id": public_id,
+        "to_public_id": target_public_id,
+        "overwrite": "false",
+        "invalidate": "true",
+        "timestamp": timestamp,
+    }
+    data = {**params, "api_key": settings.CLOUDINARY_API_KEY, "signature": sign(params)}
+    url = f"{API_BASE}/{settings.CLOUDINARY_CLOUD_NAME}/{resource_type}/rename"
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            res = await client.post(url, data=data)
+        except httpx.HTTPError as exc:
+            raise CloudinaryError("could not reach Cloudinary") from exc
+    if res.status_code != 200:
+        raise CloudinaryError(f"Cloudinary rename responded {res.status_code}")
+    body = res.json()
+    if not isinstance(body, dict):
+        raise CloudinaryError("Cloudinary returned an invalid rename response.")
+    if body.get("public_id") != target_public_id or not body.get("secure_url"):
+        raise CloudinaryError("Cloudinary returned an incomplete rename response.")
+    return body
