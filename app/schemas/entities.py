@@ -281,6 +281,12 @@ class MediaSignature(CamelModel):
     upload_url: str
 
 
+class MediaSignIn(CamelModel):
+    """Optional path below the configured Cloudinary root folder."""
+
+    folder: Annotated[str | None, Field(max_length=120)] = None
+
+
 class MediaRegister(CamelModel):
     """The Cloudinary upload response, forwarded by the browser after a direct upload."""
 
@@ -350,4 +356,3 @@ class SectionDetail(SectionSummary):
 class MediaUsage(CamelModel):
     where: str
     label: str
-

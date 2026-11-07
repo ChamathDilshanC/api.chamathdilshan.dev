@@ -8,6 +8,7 @@ https://cloudinary.com/documentation/authentication_signatures
 
 import hashlib
 import hmac
+import re
 import time
 from typing import Any
 
@@ -41,9 +42,13 @@ def sign(params: dict[str, Any]) -> str:
     return _digest(to_sign + settings.CLOUDINARY_API_SECRET)
 
 
-def upload_signature() -> dict[str, Any]:
+def upload_signature(subfolder: str | None = None) -> dict[str, Any]:
     timestamp = int(time.time())
     folder = settings.CLOUDINARY_FOLDER
+    if subfolder:
+        if not re.fullmatch(r"[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*", subfolder):
+            raise CloudinaryError("Upload folder contains invalid path segments.")
+        folder = f"{folder.rstrip('/')}/{subfolder}"
     params = {"timestamp": timestamp, "folder": folder}
     return {
         "cloud_name": settings.CLOUDINARY_CLOUD_NAME,

@@ -42,9 +42,12 @@ def _require_configured() -> None:
         )
 
 
-def signature() -> dict[str, object]:
+def signature(subfolder: str | None = None) -> dict[str, object]:
     _require_configured()
-    return cloudinary.upload_signature()
+    try:
+        return cloudinary.upload_signature(subfolder)
+    except cloudinary.CloudinaryError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 async def register(db: AsyncSession, data: MediaRegister) -> MediaOut:
