@@ -1,6 +1,8 @@
 """Media library: records of assets uploaded straight to Cloudinary."""
 
 import json
+import re
+from typing import Any, cast
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -9,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.integrations import cloudinary
 from app.models import Experience, Media, Post, Project, Section, Skill
-from app.schemas.entities import MediaOut, MediaRegister, MediaUsage
+from app.schemas.entities import MediaOrganizeOut, MediaOut, MediaRegister, MediaUsage
 from app.schemas.sections import SECTIONS
 from app.services.common import not_found
 
@@ -148,3 +150,114 @@ async def delete(db: AsyncSession, media_id: int, *, force: bool) -> Media:
     await db.delete(row)
     await db.commit()
     return row
+
+
+def _folder_part(value: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_-]+", "-", value).strip("-_")[:80] or "unknown"
+
+
+def _replace(value: object, old_url: str, new_url: str, old_id: str, new_id: str) -> object:
+    if isinstance(value, str):
+        return value.replace(old_url, new_url).replace(old_id, new_id)
+    if isinstance(value, list):
+        return [_replace(item, old_url, new_url, old_id, new_id) for item in value]
+    if isinstance(value, dict):
+        return {
+            key: _replace(item, old_url, new_url, old_id, new_id)
+            for key, item in value.items()
+        }
+    return value
+
+
+async def _references(db: AsyncSession, row: Media) -> list[str]:
+    refs: list[str] = []
+    for section in await db.scalars(select(Section)):
+        if row.public_id in json.dumps(section.data, default=str):
+            refs.append(f"sections/{_folder_part(section.key)}")
+    for project in await db.scalars(select(Project)):
+        if row.public_id in json.dumps(
+            [project.thumbnail, project.hero, project.gallery],
+            default=str,
+        ):
+            refs.append(f"projects/{project.id}")
+    for post in await db.scalars(select(Post)):
+        if row.public_id in json.dumps([post.cover, post.sections], default=str):
+            refs.append(f"journal/{post.id}")
+    for skill in await db.scalars(select(Skill)):
+        if skill.icon and row.public_id in skill.icon:
+            refs.append(f"skills/{skill.id}")
+    for job in await db.scalars(select(Experience)):
+        if job.logo and row.public_id in job.logo:
+            refs.append(f"experience/{job.id}")
+    return refs
+
+
+async def organize(db: AsyncSession) -> MediaOrganizeOut:
+    """Move registered Cloudinary assets into folders based on their content usage."""
+    _require_configured()
+    moved = skipped = shared = 0
+    failed: list[str] = []
+    rows = list(await db.scalars(select(Media).order_by(Media.id)))
+    for row in rows:
+        refs = await _references(db, row)
+        if not refs:
+            target_folder = "unassigned"
+        elif len(refs) > 1:
+            target_folder = "shared"
+            shared += 1
+        else:
+            target_folder = refs[0]
+        basename = _folder_part(row.public_id.rsplit("/", 1)[-1])
+        target = f"{settings.CLOUDINARY_FOLDER.rstrip('/')}/{target_folder}/{basename}-{row.id}"
+        if row.public_id == target:
+            skipped += 1
+            continue
+        try:
+            result = await cloudinary.rename(row.public_id, target, row.kind)
+        except cloudinary.CloudinaryError as exc:
+            failed.append(f"{row.id}: {exc}")
+            continue
+        old_id, old_url = row.public_id, row.url
+        new_url = str(result["secure_url"])
+        row.public_id = target
+        row.url = new_url
+        for section_model in (await db.scalars(select(Section))).all():
+            section_model.data = cast(
+                dict[str, Any],
+                _replace(section_model.data, old_url, new_url, old_id, target),
+            )
+        for project_model in (await db.scalars(select(Project))).all():
+            project_model.thumbnail = cast(
+                dict[str, Any] | None,
+                _replace(project_model.thumbnail, old_url, new_url, old_id, target),
+            )
+            project_model.hero = cast(
+                dict[str, Any] | None,
+                _replace(project_model.hero, old_url, new_url, old_id, target),
+            )
+            project_model.gallery = cast(
+                list[dict[str, Any]],
+                _replace(project_model.gallery, old_url, new_url, old_id, target),
+            )
+        for post_model in (await db.scalars(select(Post))).all():
+            post_model.cover = cast(
+                dict[str, Any] | None,
+                _replace(post_model.cover, old_url, new_url, old_id, target),
+            )
+            post_model.sections = cast(
+                list[dict[str, Any]],
+                _replace(post_model.sections, old_url, new_url, old_id, target),
+            )
+        for skill_model in (await db.scalars(select(Skill))).all():
+            skill_model.icon = cast(
+                str | None,
+                _replace(skill_model.icon, old_url, new_url, old_id, target),
+            )
+        for experience_model in (await db.scalars(select(Experience))).all():
+            experience_model.logo = cast(
+                str | None,
+                _replace(experience_model.logo, old_url, new_url, old_id, target),
+            )
+        moved += 1
+    await db.commit()
+    return MediaOrganizeOut(moved=moved, skipped=skipped, shared=shared, failed=failed)

@@ -324,6 +324,13 @@ class MediaOut(CamelModel):
     created_at: datetime
 
 
+class MediaOrganizeOut(CamelModel):
+    moved: int
+    skipped: int
+    shared: int
+    failed: list[str]
+
+
 # --- shared admin responses ---------------------------------------------------
 
 

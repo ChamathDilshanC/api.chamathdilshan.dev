@@ -15,10 +15,11 @@ from app.schemas.entities import (
     AuditOut,
     ExperienceIn,
     ExperienceOut,
+    MediaOrganizeOut,
     MediaOut,
     MediaRegister,
-    MediaSignIn,
     MediaSignature,
+    MediaSignIn,
     MediaUpdate,
     PostIn,
     PostOut,
@@ -284,6 +285,13 @@ async def list_media(
     db: DB, kind: Annotated[Literal["image", "video"] | None, Query()] = None
 ) -> Any:
     return await media.list_media(db, kind)
+
+
+@router.post("/media/organize", response_model=MediaOrganizeOut)
+async def organize_media(admin: CurrentAdmin, db: DB) -> Any:
+    result = await media.organize(db)
+    await audit.record(db, "media.organize", actor=admin.email, target="cloudinary", ip=admin.ip)
+    return result
 
 
 @router.patch("/media/{media_id}", response_model=MediaOut)
