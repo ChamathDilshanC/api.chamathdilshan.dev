@@ -17,6 +17,7 @@ from app.schemas.entities import (
     ExperienceOut,
     MediaOut,
     MediaRegister,
+    MediaSignIn,
     MediaSignature,
     MediaUpdate,
     PostIn,
@@ -265,9 +266,9 @@ async def reorder_skills(data: ReorderIn, admin: CurrentAdmin, db: DB) -> Any:
 
 
 @router.post("/media/sign", response_model=MediaSignature)
-async def sign_upload() -> Any:
+async def sign_upload(data: MediaSignIn | None = None) -> Any:
     """Short-lived signature for one direct browser → Cloudinary upload."""
-    return media.signature()
+    return media.signature(data.folder if data else None)
 
 
 @router.post("/media", response_model=MediaOut, status_code=status.HTTP_201_CREATED)
