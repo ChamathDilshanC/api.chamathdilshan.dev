@@ -121,7 +121,7 @@ class PostIn(CamelModel):
     category: Short = ""
     date: date
     excerpt: Line = ""
-    cover: ImageRef | None = None
+    cover: MediaItem | None = None
     sections: Annotated[list[PostSectionIn], Field(max_length=40)] = []
     published: bool = False
 
@@ -151,7 +151,7 @@ class PostPublic(CamelModel):
     category: str
     date: date
     excerpt: str
-    cover: ImageRef
+    cover: MediaItem
     sections: list[PostSectionPublic]
 
 
