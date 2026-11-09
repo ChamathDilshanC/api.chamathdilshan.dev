@@ -113,6 +113,17 @@ class PostSectionIn(CamelModel):
         list[ImageRef],
         Field(max_length=2, description="One full-width image or two side by side."),
     ] = []
+    videos: Annotated[
+        list[MediaItem],
+        Field(max_length=2, description="Videos shown after the section images."),
+    ] = []
+
+    @field_validator("videos")
+    @classmethod
+    def _videos_only(cls, value: list[MediaItem]) -> list[MediaItem]:
+        if any(item.kind != "video" for item in value):
+            raise ValueError("Section videos must have kind video.")
+        return value
 
 
 class PostIn(CamelModel):
@@ -143,6 +154,7 @@ class PostSectionPublic(CamelModel):
     title: str
     paragraphs: list[str]
     images: list[ImageRef]
+    videos: list[MediaItem] = []
 
 
 class PostPublic(CamelModel):
