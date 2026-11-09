@@ -33,6 +33,7 @@ from app.schemas.entities import (
 )
 from app.security.deps import DB, CurrentAdmin, require_admin, require_trusted_origin
 from app.services import audit, experience, media, posts, projects, sections, skills
+from app.services.article_import import ArticleImportIn, ArticleImportOut, import_article
 
 
 def _private(response: Response) -> None:
@@ -53,6 +54,15 @@ SCHEMAS: dict[str, type[CamelModel]] = {
     "skill": SkillIn,
     "experience": ExperienceIn,
 }
+
+
+@router.post("/posts/import-preview", response_model=ArticleImportOut)
+async def preview_article_import(data: ArticleImportIn) -> ArticleImportOut:
+    """Validate HTML and return editable draft data without saving a record."""
+    try:
+        return import_article(data.html)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 # --- overview -----------------------------------------------------------------
