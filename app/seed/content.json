@@ -420,27 +420,27 @@
         {
           "name": "VS Code",
           "role": "Editor",
-          "image": "/images/placeholders/team-1.jpg"
+          "image": "https://thesvg.org/icons/visual-studio-code/default.svg"
         },
         {
           "name": "Figma",
           "role": "Design",
-          "image": "/images/placeholders/team-2.jpg"
+          "image": "https://thesvg.org/icons/figma/default.svg"
         },
         {
           "name": "Docker",
           "role": "Containers",
-          "image": "/images/placeholders/team-3.jpg"
+          "image": "https://thesvg.org/icons/docker/default.svg"
         },
         {
           "name": "GitHub Actions",
           "role": "CI/CD",
-          "image": "/images/placeholders/team-4.jpg"
+          "image": "https://thesvg.org/icons/github-actions/default.svg"
         },
         {
           "name": "Supabase",
           "role": "Data & Auth",
-          "image": "/images/placeholders/detail-3.jpg"
+          "image": "https://thesvg.org/icons/supabase/default.svg"
         }
       ]
     },

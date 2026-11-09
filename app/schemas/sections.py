@@ -8,9 +8,10 @@ admin form, so adding a field here adds it to the editor too.
 from dataclasses import dataclass
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, ValidationInfo, field_validator
 
 from app.schemas.common import (
+    BrandIconUrl,
     CamelModel,
     Copy,
     Cta,
@@ -268,7 +269,30 @@ class AboutProcess(CamelModel):
 class ToolboxItem(CamelModel):
     name: Short
     role: Short
-    image: ImageUrl
+    image: BrandIconUrl | None = Field(
+        default=None,
+        title="Logo",
+        description=(
+            "Search theSVG by tool name, or paste a logo URL. "
+            "Use a light variant on the dark background."
+        ),
+    )
+
+    @field_validator("image", mode="before")
+    @classmethod
+    def _replace_placeholder(cls, value: object, info: ValidationInfo) -> object:
+        """Upgrade old stock photos when reading or saving existing toolbox content."""
+        if isinstance(value, str) and value.startswith("/images/placeholders/"):
+            slugs = {
+                "VS Code": "visual-studio-code",
+                "Figma": "figma",
+                "Docker": "docker",
+                "GitHub Actions": "github-actions",
+                "Supabase": "supabase",
+            }
+            slug = slugs.get(info.data.get("name", ""))
+            return f"https://thesvg.org/icons/{slug}/default.svg" if slug else None
+        return value
 
 
 class AboutToolbox(CamelModel):
@@ -362,8 +386,11 @@ _SPECS = [
                 AboutExperience),
     SectionSpec("about.process", "About · Process", "Pages", "Process statement and steps.",
                 AboutProcess),
-    SectionSpec("about.toolbox", "About · Toolbox", "Pages", "Scrolling tool tiles.",
-                AboutToolbox),
+    SectionSpec(
+        "about.toolbox", "About · Toolbox", "Pages",
+        "Scrolling tool logos. Add, remove and reorder tools; search theSVG for each logo.",
+        AboutToolbox,
+    ),
     SectionSpec("about.recognition", "About · Recognition", "Pages", "Awards and certificates.",
                 AboutRecognition),
     SectionSpec("about.stack", "About · Stack", "Pages",
