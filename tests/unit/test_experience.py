@@ -159,14 +159,14 @@ def test_protected_documents_upload_and_public_delivery(
             "signature": sign({"public_id": public_id, "version": 42}),
             "resourceType": "image",
             "deliveryType": "authenticated",
-            "format": "pdf",
+            "format": "png",
             "secureUrl": (
                 "https://res.cloudinary.com/demo/image/authenticated/"
-                "v42/chamathdilshan.dev/experience/draft/service-letter.pdf"
+                "v42/chamathdilshan.dev/experience/draft/service-letter.png"
             ),
             "pages": 2,
             "bytes": 2048,
-            "originalFilename": "service-letter.pdf",
+            "originalFilename": "service-letter.png",
         },
     )
     assert registered.status_code == 200, registered.text
@@ -181,19 +181,19 @@ def test_protected_documents_upload_and_public_delivery(
     experience_id = created.json()["id"]
     public = signed_in.get("/api/experience").json()[0]
     assert public["documents"] == [
-        {"id": document["id"], "label": "Service letter", "format": "pdf", "pages": 2}
+        {"id": document["id"], "label": "Service letter", "format": "png", "pages": 2}
     ]
     assert "publicId" not in public["documents"][0]
 
     async def fake_fetch(_: Any) -> tuple[bytes, str]:
-        return b"%PDF-test", "application/pdf"
+        return b"PNG-test", "image/png"
 
     monkeypatch.setattr(documents, "fetch", fake_fetch)
     response = signed_in.get(
         f"/api/experience/{experience_id}/documents/{document['id']}"
     )
     assert response.status_code == 200
-    assert response.content == b"%PDF-test"
+    assert response.content == b"PNG-test"
     assert response.headers["cache-control"] == "private, no-store, max-age=0"
     assert response.headers["content-disposition"] == "inline"
     assert signed_in.get(
