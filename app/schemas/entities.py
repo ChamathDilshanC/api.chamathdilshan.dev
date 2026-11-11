@@ -205,10 +205,35 @@ class SkillPublic(CamelModel):
 EmploymentType = Literal[
     "Full-time", "Part-time", "Contract", "Freelance", "Internship", "Self-employed"
 ]
+DocumentFormat = Literal["pdf", "jpg", "jpeg", "png", "webp"]
 Month = Annotated[
     str,
     Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", json_schema_extra={"format": "month"}),
 ]
+
+
+class ExperienceDocumentIn(CamelModel):
+    """A protected Cloudinary asset attached to one employer."""
+
+    id: Annotated[str, Field(min_length=12, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")]
+    label: Annotated[str, Field(min_length=1, max_length=80)] = "Service letter"
+    public_id: Annotated[
+        str,
+        Field(min_length=1, max_length=300, pattern=r"^[A-Za-z0-9_./-]+$"),
+    ]
+    version: Annotated[int, Field(ge=1)]
+    resource_type: Literal["image", "raw"]
+    format: DocumentFormat
+    pages: Annotated[int, Field(ge=1, le=100)] = 1
+    bytes: Annotated[int, Field(ge=1, le=15 * 1024 * 1024)]
+    original_filename: Annotated[str, Field(min_length=1, max_length=300)]
+
+
+class ExperienceDocumentPublic(CamelModel):
+    id: str
+    label: str
+    format: str
+    pages: int
 
 
 class ExperienceRoleIn(CamelModel):
@@ -254,7 +279,26 @@ class ExperienceIn(CamelModel):
             ),
         ),
     ]
+    documents: Annotated[
+        list[ExperienceDocumentIn],
+        Field(
+            max_length=20,
+            description=(
+                "Protected service letters, employment letters and certificates. "
+                "Visitors see one labelled view-only button for each document."
+            ),
+            json_schema_extra=widget("documents"),
+        ),
+    ] = []
     published: bool = Field(default=True, description="Show on the about page.")
+
+    @model_validator(mode="after")
+    def _unique_documents(self) -> Self:
+        ids = [document.id for document in self.documents]
+        public_ids = [document.public_id for document in self.documents]
+        if len(ids) != len(set(ids)) or len(public_ids) != len(set(public_ids)):
+            raise ValueError("Each attached document must be unique.")
+        return self
 
 
 class ExperienceOut(ExperienceIn):
@@ -274,11 +318,38 @@ class ExperienceRolePublic(CamelModel):
 
 
 class ExperiencePublic(CamelModel):
+    id: int
     company: str
     company_url: str | None
     logo: str | None
     location: str
     roles: list[ExperienceRolePublic]
+    documents: list[ExperienceDocumentPublic] = []
+
+
+class ExperienceDocumentSignature(CamelModel):
+    cloud_name: str
+    api_key: str
+    timestamp: int
+    folder: str
+    signature: str
+    upload_url: str
+    delivery_type: Literal["authenticated"]
+
+
+class ExperienceDocumentRegister(CamelModel):
+    """Authenticated Cloudinary upload response forwarded by the admin browser."""
+
+    public_id: Annotated[str, Field(max_length=300)]
+    version: Annotated[int, Field(ge=1)]
+    signature: Annotated[str, Field(max_length=128)]
+    resource_type: Literal["image", "raw"]
+    delivery_type: Literal["authenticated"]
+    format: DocumentFormat
+    secure_url: Annotated[str, Field(max_length=1000)]
+    pages: Annotated[int, Field(ge=1, le=100)] = 1
+    bytes: Annotated[int, Field(ge=1, le=15 * 1024 * 1024)]
+    original_filename: Annotated[str, Field(min_length=1, max_length=300)]
 
 
 # --- media --------------------------------------------------------------------

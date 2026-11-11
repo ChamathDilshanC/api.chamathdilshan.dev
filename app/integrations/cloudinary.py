@@ -42,15 +42,17 @@ def sign(params: dict[str, Any]) -> str:
     return _digest(to_sign + settings.CLOUDINARY_API_SECRET)
 
 
-def upload_signature(subfolder: str | None = None) -> dict[str, Any]:
+def upload_signature(
+    subfolder: str | None = None, *, delivery_type: str | None = None
+) -> dict[str, Any]:
     timestamp = int(time.time())
     folder = settings.CLOUDINARY_FOLDER
     if subfolder:
         if not re.fullmatch(r"[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_-]+)*", subfolder):
             raise CloudinaryError("Upload folder contains invalid path segments.")
         folder = f"{folder.rstrip('/')}/{subfolder}"
-    params = {"timestamp": timestamp, "folder": folder}
-    return {
+    params = {"timestamp": timestamp, "folder": folder, "type": delivery_type}
+    result = {
         "cloud_name": settings.CLOUDINARY_CLOUD_NAME,
         "api_key": settings.CLOUDINARY_API_KEY,
         "timestamp": timestamp,
@@ -58,6 +60,9 @@ def upload_signature(subfolder: str | None = None) -> dict[str, Any]:
         "signature": sign(params),
         "upload_url": f"{API_BASE}/{settings.CLOUDINARY_CLOUD_NAME}/auto/upload",
     }
+    if delivery_type:
+        result["delivery_type"] = delivery_type
+    return result
 
 
 def verify_upload_response(public_id: str, version: int, signature: str) -> bool:
@@ -79,9 +84,17 @@ def video_poster(url: str) -> str:
     return f"{head}/video/upload/so_0/{stem}.jpg"
 
 
-async def destroy(public_id: str, resource_type: str) -> None:
+async def destroy(
+    public_id: str, resource_type: str, *, delivery_type: str | None = None
+) -> None:
     timestamp = int(time.time())
-    params: dict[str, Any] = {"public_id": public_id, "timestamp": timestamp, "invalidate": "true"}
+    params: dict[str, Any] = {
+        "public_id": public_id,
+        "timestamp": timestamp,
+        "invalidate": "true",
+    }
+    if delivery_type:
+        params["type"] = delivery_type
     data = {**params, "api_key": settings.CLOUDINARY_API_KEY, "signature": sign(params)}
     url = f"{API_BASE}/{settings.CLOUDINARY_CLOUD_NAME}/{resource_type}/destroy"
     async with httpx.AsyncClient(timeout=15.0) as client:
