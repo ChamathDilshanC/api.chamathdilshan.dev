@@ -6,12 +6,14 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Path, Request, Response, status
 
 from app.core.http_cache import PUBLIC_CONTENT, apply_cache
+from app.integrations.cloudinary import CloudinaryError
 from app.security.deps import DB
-from app.services import experience, posts, projects, sections, skills
+from app.services import documents, experience, posts, projects, sections, skills
 
 router = APIRouter()
 
 SlugParam = Annotated[str, Path(max_length=120, pattern=r"^[a-z0-9-]+$")]
+DocumentIdParam = Annotated[str, Path(max_length=40, pattern=r"^[A-Za-z0-9_-]+$")]
 
 
 def _cached(request: Request, response: Response, payload: Any) -> Any:
@@ -65,3 +67,31 @@ async def list_skills(request: Request, response: Response, db: DB) -> Any:
 async def list_experience(request: Request, response: Response, db: DB) -> Any:
     """Companies with their roles, most recent first."""
     return _cached(request, response, await experience.public_list(db))
+
+
+@router.get("/experience/{experience_id}/documents/{document_id}")
+async def view_experience_document(
+    experience_id: int, document_id: DocumentIdParam, db: DB
+) -> Response:
+    """Inline, no-store delivery for a document on a published experience."""
+    document = await experience.public_document(db, experience_id, document_id)
+    if document is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Document not found.")
+    try:
+        content, media_type = await documents.fetch(document)
+    except CloudinaryError as exc:
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY, detail="Document is temporarily unavailable."
+        ) from exc
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "private, no-store, max-age=0",
+            "Content-Disposition": "inline",
+            "Content-Security-Policy": "default-src 'none'; sandbox",
+            "Cross-Origin-Resource-Policy": "cross-origin",
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+        },
+    )

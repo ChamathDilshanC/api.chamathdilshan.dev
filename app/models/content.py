@@ -102,6 +102,9 @@ class Experience(Base):
     # [{title, employmentType, start: "YYYY-MM", end: "YYYY-MM" | null, summary,
     #   highlights: [...], skills: [...]}, …]
     roles: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
+    # Protected Cloudinary references. Public responses expose only display metadata;
+    # file bytes are delivered through a validated, no-store API endpoint.
+    documents: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
     published: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)

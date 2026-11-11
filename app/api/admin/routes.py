@@ -9,10 +9,14 @@ from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.core.http_cache import no_store
+from app.integrations.cloudinary import CloudinaryError
 from app.models import Media, Post, Project, Skill
 from app.schemas.common import CamelModel
 from app.schemas.entities import (
     AuditOut,
+    ExperienceDocumentIn,
+    ExperienceDocumentRegister,
+    ExperienceDocumentSignature,
     ExperienceIn,
     ExperienceOut,
     MediaOrganizeOut,
@@ -32,7 +36,7 @@ from app.schemas.entities import (
     SkillOut,
 )
 from app.security.deps import DB, CurrentAdmin, require_admin, require_trusted_origin
-from app.services import audit, experience, media, posts, projects, sections, skills
+from app.services import audit, documents, experience, media, posts, projects, sections, skills
 from app.services.article_import import ArticleImportIn, ArticleImportOut, import_article
 
 
@@ -202,6 +206,24 @@ async def delete_post(post_id: int, admin: CurrentAdmin, db: DB) -> None:
 
 
 # --- work experience ----------------------------------------------------------
+
+
+@router.post("/experience-documents/sign", response_model=ExperienceDocumentSignature)
+async def sign_experience_document(data: MediaSignIn | None = None) -> Any:
+    """Short-lived signature for an authenticated document upload."""
+    try:
+        return documents.signature(data.folder if data else None)
+    except CloudinaryError as exc:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+
+@router.post("/experience-documents", response_model=ExperienceDocumentIn)
+async def register_experience_document(data: ExperienceDocumentRegister) -> Any:
+    """Verify Cloudinary's response before a reference can be saved on experience."""
+    try:
+        return documents.register(data)
+    except CloudinaryError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.get("/experience", response_model=list[ExperienceOut])

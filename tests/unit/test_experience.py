@@ -42,6 +42,8 @@ def test_experience_schema_drives_the_editor(signed_in: TestClient) -> None:
     fields = schema["$defs"]["ExperienceRoleIn"]["properties"]
     assert fields["start"]["format"] == "month"
     assert "Internship" in fields["employmentType"]["enum"]
+    assert schema["properties"]["documents"]["widget"] == "documents"
+    assert schema["properties"]["documents"]["maxItems"] == 20
 
 
 def test_experience_crud_and_promotions(signed_in: TestClient) -> None:
@@ -109,7 +111,10 @@ def test_public_timeline_orders_companies_and_hides_drafts(signed_in: TestClient
     assert timeline.status_code == 200
     assert [c["company"] for c in timeline.json()] == ["Current Co", "Recent Co", "Old Co"]
     first = timeline.json()[0]
-    assert set(first) == {"company", "companyUrl", "logo", "location", "roles"}
+    assert set(first) == {
+        "id", "company", "companyUrl", "logo", "location", "roles", "documents"
+    }
+    assert first["documents"] == []
     assert first["roles"][0]["end"] is None
     assert [c["company"] for c in signed_in.get("/api/admin/experience").json()] == [
         "Hidden Co", "Current Co", "Recent Co", "Old Co"
@@ -131,3 +136,66 @@ def test_experience_heading_is_an_editable_section(signed_in: TestClient) -> Non
     assert detail["data"]["title"] == "Experience"
     public = signed_in.get("/api/content").json()["sections"]
     assert public["about.experience"]["title"] == "Experience"
+
+
+def test_protected_documents_upload_and_public_delivery(
+    signed_in: TestClient, monkeypatch: Any
+) -> None:
+    from app.integrations.cloudinary import sign
+    from app.services import documents
+
+    upload_signature = signed_in.post(
+        "/api/admin/experience-documents/sign", json={"folder": "draft"}
+    )
+    assert upload_signature.status_code == 200
+    assert upload_signature.json()["deliveryType"] == "authenticated"
+
+    public_id = "chamathdilshan.dev/experience/draft/service-letter"
+    registered = signed_in.post(
+        "/api/admin/experience-documents",
+        json={
+            "publicId": public_id,
+            "version": 42,
+            "signature": sign({"public_id": public_id, "version": 42}),
+            "resourceType": "image",
+            "deliveryType": "authenticated",
+            "format": "pdf",
+            "secureUrl": (
+                "https://res.cloudinary.com/demo/image/authenticated/"
+                "v42/chamathdilshan.dev/experience/draft/service-letter.pdf"
+            ),
+            "pages": 2,
+            "bytes": 2048,
+            "originalFilename": "service-letter.pdf",
+        },
+    )
+    assert registered.status_code == 200, registered.text
+    document = registered.json()
+    assert document["label"] == "service letter"
+
+    created = signed_in.post(
+        "/api/admin/experience",
+        json=company(documents=[{**document, "label": "Service letter"}]),
+    )
+    assert created.status_code == 201, created.text
+    experience_id = created.json()["id"]
+    public = signed_in.get("/api/experience").json()[0]
+    assert public["documents"] == [
+        {"id": document["id"], "label": "Service letter", "format": "pdf", "pages": 2}
+    ]
+    assert "publicId" not in public["documents"][0]
+
+    async def fake_fetch(_: Any) -> tuple[bytes, str]:
+        return b"%PDF-test", "application/pdf"
+
+    monkeypatch.setattr(documents, "fetch", fake_fetch)
+    response = signed_in.get(
+        f"/api/experience/{experience_id}/documents/{document['id']}"
+    )
+    assert response.status_code == 200
+    assert response.content == b"%PDF-test"
+    assert response.headers["cache-control"] == "private, no-store, max-age=0"
+    assert response.headers["content-disposition"] == "inline"
+    assert signed_in.get(
+        f"/api/experience/{experience_id}/documents/not-a-real-document"
+    ).status_code == 404

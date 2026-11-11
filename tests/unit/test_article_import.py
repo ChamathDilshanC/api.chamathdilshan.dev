@@ -83,6 +83,7 @@ def test_import_rejects_invalid_content(fragment: str) -> None:
         "<div>" * 66,
         "x" * 1_048_577,
     ],
+    ids=["empty", "missing-title", "two-titles", "missing-body", "too-deep", "too-large"],
 )
 def test_import_rejects_missing_structure_and_limits(html: str) -> None:
     with pytest.raises(ValueError):

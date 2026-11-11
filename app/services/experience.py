@@ -11,8 +11,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import flush_content, get_or_set, key
+from app.integrations.cloudinary import CloudinaryError, destroy
 from app.models import Experience
-from app.schemas.entities import ExperienceIn, ExperienceOut, ExperiencePublic, ExperienceRoleIn
+from app.schemas.entities import (
+    ExperienceDocumentIn,
+    ExperienceIn,
+    ExperienceOut,
+    ExperiencePublic,
+    ExperienceRoleIn,
+)
 from app.services.common import dump, not_found
 
 # Sorts after any real "YYYY-MM", so a role without an end month counts as current.
@@ -47,6 +54,7 @@ def to_out(row: Experience) -> ExperienceOut:
             "logo": row.logo,
             "location": row.location,
             "roles": row.roles,
+            "documents": row.documents,
             "published": row.published,
             "createdAt": row.created_at,
             "updatedAt": row.updated_at,
@@ -60,7 +68,24 @@ def _apply(row: Experience, data: ExperienceIn) -> None:
     row.logo = data.logo
     row.location = data.location
     row.roles = _roles(data.roles)
+    row.documents = [dump(document) for document in data.documents]
     row.published = data.published
+
+
+async def _destroy_documents(documents: list[dict[str, Any]]) -> None:
+    """Delete detached assets. A failed cleanup never restores a public reference."""
+    for value in documents:
+        try:
+            document = ExperienceDocumentIn.model_validate(value)
+            await destroy(
+                document.public_id,
+                document.resource_type,
+                delivery_type="authenticated",
+            )
+        except (CloudinaryError, ValueError):
+            # The DB reference is already gone, so the authenticated asset is no
+            # longer reachable through the public API. It can be cleaned up later.
+            continue
 
 
 async def _flush() -> None:
@@ -90,18 +115,25 @@ async def create(db: AsyncSession, data: ExperienceIn) -> ExperienceOut:
 
 async def update(db: AsyncSession, experience_id: int, data: ExperienceIn) -> ExperienceOut:
     row = await get(db, experience_id)
+    retained = {document.public_id for document in data.documents}
+    removed = [
+        value for value in (row.documents or []) if value.get("publicId") not in retained
+    ]
     _apply(row, data)
     await db.commit()
     await _flush()
+    await _destroy_documents(removed)
     return to_out(row)
 
 
 async def delete(db: AsyncSession, experience_id: int) -> str:
     row = await get(db, experience_id)
     company = row.company
+    removed = list(row.documents or [])
     await db.delete(row)
     await db.commit()
     await _flush()
+    await _destroy_documents(removed)
     return company
 
 
@@ -111,11 +143,21 @@ async def public_list(db: AsyncSession) -> list[dict[str, Any]]:
         return [
             dump(
                 ExperiencePublic(
+                    id=r.id,
                     company=r.company,
                     company_url=r.company_url,
                     logo=r.logo,
                     location=r.location,
                     roles=sorted(r.roles or [], key=_role_key, reverse=True),
+                    documents=[
+                        {
+                            "id": document["id"],
+                            "label": document["label"],
+                            "format": document["format"],
+                            "pages": document.get("pages", 1),
+                        }
+                        for document in (r.documents or [])
+                    ],
                 )
             )
             for r in _ordered(rows)
@@ -126,3 +168,15 @@ async def public_list(db: AsyncSession) -> list[dict[str, Any]]:
         key("experience", "list"), 3600, ["experience"], load
     )
     return result
+
+
+async def public_document(
+    db: AsyncSession, experience_id: int, document_id: str
+) -> ExperienceDocumentIn | None:
+    row = await db.get(Experience, experience_id)
+    if row is None or not row.published:
+        return None
+    for value in row.documents or []:
+        if value.get("id") == document_id:
+            return ExperienceDocumentIn.model_validate(value)
+    return None
