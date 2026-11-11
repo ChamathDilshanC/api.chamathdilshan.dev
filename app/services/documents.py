@@ -1,11 +1,10 @@
 """Protected work-experience document uploads and delivery."""
 
 import secrets
-import time
 from pathlib import PurePath
 
 import cloudinary
-from cloudinary.utils import private_download_url
+from cloudinary.utils import cloudinary_url
 
 from app.core.config import settings
 from app.integrations import cloudinary as cloudinary_api
@@ -77,13 +76,18 @@ def delivery_url(document: ExperienceDocumentIn) -> str:
         signature_algorithm=settings.CLOUDINARY_SIGNATURE_ALGORITHM,
         secure=True,
     )
-    url = private_download_url(
+    url, _ = cloudinary_url(
         document.public_id,
-        document.format,
         resource_type=document.resource_type,
         type="authenticated",
-        expires_at=int(time.time()) + 30,
-        attachment=False,
-        transformation={"width": 1800, "height": 2400, "crop": "limit"},
+        format=document.format,
+        sign_url=True,
+        transformation={
+            "width": 1800,
+            "height": 2400,
+            "crop": "limit",
+            "fetch_format": "auto",
+            "quality": "auto",
+        },
     )
     return str(url)
