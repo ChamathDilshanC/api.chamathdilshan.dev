@@ -4,6 +4,7 @@ import json
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Path, Request, Response, status
+from fastapi.responses import RedirectResponse
 
 from app.core.http_cache import PUBLIC_CONTENT, apply_cache
 from app.integrations.cloudinary import CloudinaryError
@@ -73,25 +74,25 @@ async def list_experience(request: Request, response: Response, db: DB) -> Any:
 async def view_experience_document(
     experience_id: int, document_id: DocumentIdParam, db: DB
 ) -> Response:
-    """Inline, no-store delivery for a document on a published experience."""
+    """Redirect to a short-lived CDN URL for a published document."""
     document = await experience.public_document(db, experience_id, document_id)
     if document is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Document not found.")
     try:
-        content, media_type = await documents.fetch(document)
+        url = documents.delivery_url(document)
     except CloudinaryError as exc:
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY, detail="Document is temporarily unavailable."
         ) from exc
-    return Response(
-        content=content,
-        media_type=media_type,
+    response = RedirectResponse(
+        url=url,
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
         headers={
-            "Cache-Control": "private, no-store, max-age=0",
-            "Content-Disposition": "inline",
+            "Cache-Control": "private, max-age=20",
             "Content-Security-Policy": "default-src 'none'; sandbox",
             "Cross-Origin-Resource-Policy": "cross-origin",
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
         },
     )
+    return response
