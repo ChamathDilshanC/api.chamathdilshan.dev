@@ -205,7 +205,7 @@ class SkillPublic(CamelModel):
 EmploymentType = Literal[
     "Full-time", "Part-time", "Contract", "Freelance", "Internship", "Self-employed"
 ]
-DocumentFormat = Literal["pdf", "jpg", "jpeg", "png", "webp"]
+DocumentFormat = Literal["png"]
 Month = Annotated[
     str,
     Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$", json_schema_extra={"format": "month"}),
@@ -284,7 +284,7 @@ class ExperienceIn(CamelModel):
         Field(
             max_length=20,
             description=(
-                "Protected service letters, employment letters and certificates. "
+                "Protected PNG service letters, employment letters and certificates. "
                 "Visitors see one labelled view-only button for each document."
             ),
             json_schema_extra=widget("documents"),

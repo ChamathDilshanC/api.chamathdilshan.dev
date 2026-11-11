@@ -19,11 +19,7 @@ from app.schemas.entities import (
 
 MAX_DOCUMENT_BYTES = 15 * 1024 * 1024
 _MIME_TYPES = {
-    "pdf": "application/pdf",
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
     "png": "image/png",
-    "webp": "image/webp",
 }
 
 
@@ -44,6 +40,8 @@ def signature(subfolder: str | None = None) -> ExperienceDocumentSignature:
 def register(data: ExperienceDocumentRegister) -> ExperienceDocumentIn:
     """Validate Cloudinary's signed response and return a storable reference."""
     _require_configured()
+    if data.resource_type != "image" or data.format != "png":
+        raise CloudinaryError("Only PNG documents are supported.")
     if not cloudinary_api.verify_upload_response(data.public_id, data.version, data.signature):
         raise CloudinaryError("Cloudinary upload signature is invalid.")
 
@@ -90,6 +88,7 @@ async def fetch(document: ExperienceDocumentIn) -> tuple[bytes, str]:
         type="authenticated",
         expires_at=int(time.time()) + 30,
         attachment=False,
+        transformation={"width": 1800, "height": 2400, "crop": "limit"},
     )
     async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
         try:
@@ -100,4 +99,4 @@ async def fetch(document: ExperienceDocumentIn) -> tuple[bytes, str]:
         raise CloudinaryError(f"protected document storage responded {response.status_code}")
     if len(response.content) > MAX_DOCUMENT_BYTES:
         raise CloudinaryError("protected document exceeded the delivery size limit")
-    return response.content, _MIME_TYPES[document.format]
+    return response.content, _MIME_TYPES["png"]
