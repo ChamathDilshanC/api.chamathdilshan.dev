@@ -28,17 +28,17 @@ def test_public_reads_are_shared_cacheable_with_etag(client: TestClient) -> None
     assert again.status_code == 304
 
 
-def test_public_reads_stay_out_of_vercels_cdn(client: TestClient) -> None:
-    # Vercel's CDN would otherwise keep serving the old JSON after an admin
-    # save, so the site's revalidation would re-render stale content.
+def test_public_reads_are_cached_by_vercels_cdn(client: TestClient) -> None:
+    # Keep public reads at the edge so a cold Vercel function does not delay
+    # every visitor. Admin edits become visible after the short edge TTL.
     for path in ("/api/content", "/api/projects", "/api/posts", "/api/skills",
                  "/api/experience"):
         res = client.get(path)
-        assert res.headers["vercel-cdn-cache-control"] == "no-store", path
+        assert res.headers["vercel-cdn-cache-control"].startswith("public, s-maxage=300"), path
         assert res.headers["cache-control"].startswith("public, s-maxage=300"), path
         again = client.get(path, headers={"If-None-Match": res.headers["etag"]})
         assert again.status_code == 304
-        assert again.headers["vercel-cdn-cache-control"] == "no-store", path
+        assert again.headers["vercel-cdn-cache-control"].startswith("public, s-maxage=300"), path
 
 
 def test_private_and_immutable_policies_leave_vercels_cdn_alone() -> None:
