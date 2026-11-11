@@ -11,6 +11,10 @@ This repository is a **submodule** of
 [ChamathDilshanC/chamathdilshan](https://github.com/ChamathDilshanC/chamathdilshan).
 It deploys on its own, with the repo root as the app root.
 
+Vercel runs `alembic upgrade head` during every production build before the
+Python function is published. This keeps the deployed database schema aligned
+with the API revision, including new content fields and migrations.
+
 ---
 
 ## Run locally
