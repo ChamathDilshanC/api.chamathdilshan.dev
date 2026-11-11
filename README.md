@@ -12,8 +12,9 @@ This repository is a **submodule** of
 It deploys on its own, with the repo root as the app root.
 
 Vercel runs `alembic upgrade head` during every production build before the
-Python function is published. This keeps the deployed database schema aligned
-with the API revision, including new content fields and migrations.
+Python function is published. The migration engine uses one non-pooled
+connection, keeping concurrent builds within the database client's limit while
+keeping the deployed schema aligned with the API revision.
 
 ---
 

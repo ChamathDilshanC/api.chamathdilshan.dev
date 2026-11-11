@@ -6,6 +6,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 
 import app.models  # noqa: F401 — registers every table on Base.metadata
 from app.core.config import settings
@@ -44,7 +45,10 @@ def _run(connection: Connection) -> None:
 
 
 async def run_migrations_online() -> None:
-    engine = create_async_engine(URL)
+    # Vercel builds can run alongside other deployments while the database
+    # uses a session pool with a small client limit. Migrations need one
+    # connection only and must not create SQLAlchemy's default pool.
+    engine = create_async_engine(URL, poolclass=NullPool)
     async with engine.connect() as connection:
         await connection.run_sync(_run)
     await engine.dispose()
