@@ -5,7 +5,6 @@ import time
 from pathlib import PurePath
 
 import cloudinary
-import httpx
 from cloudinary.utils import private_download_url
 
 from app.core.config import settings
@@ -18,9 +17,6 @@ from app.schemas.entities import (
 )
 
 MAX_DOCUMENT_BYTES = 15 * 1024 * 1024
-_MIME_TYPES = {
-    "png": "image/png",
-}
 
 
 def _require_configured() -> None:
@@ -71,8 +67,8 @@ def register(data: ExperienceDocumentRegister) -> ExperienceDocumentIn:
     )
 
 
-async def fetch(document: ExperienceDocumentIn) -> tuple[bytes, str]:
-    """Fetch a protected original through a short-lived server-side URL."""
+def delivery_url(document: ExperienceDocumentIn) -> str:
+    """Create a short-lived CDN URL for a validated protected document."""
     _require_configured()
     cloudinary.config(
         cloud_name=settings.CLOUDINARY_CLOUD_NAME,
@@ -90,13 +86,4 @@ async def fetch(document: ExperienceDocumentIn) -> tuple[bytes, str]:
         attachment=False,
         transformation={"width": 1800, "height": 2400, "crop": "limit"},
     )
-    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-        try:
-            response = await client.get(url)
-        except httpx.HTTPError as exc:
-            raise CloudinaryError("could not reach protected document storage") from exc
-    if response.status_code != 200:
-        raise CloudinaryError(f"protected document storage responded {response.status_code}")
-    if len(response.content) > MAX_DOCUMENT_BYTES:
-        raise CloudinaryError("protected document exceeded the delivery size limit")
-    return response.content, _MIME_TYPES["png"]
+    return str(url)

@@ -185,17 +185,18 @@ def test_protected_documents_upload_and_public_delivery(
     ]
     assert "publicId" not in public["documents"][0]
 
-    async def fake_fetch(_: Any) -> tuple[bytes, str]:
-        return b"PNG-test", "image/png"
-
-    monkeypatch.setattr(documents, "fetch", fake_fetch)
-    response = signed_in.get(
-        f"/api/experience/{experience_id}/documents/{document['id']}"
+    monkeypatch.setattr(
+        documents,
+        "delivery_url",
+        lambda _: "https://res.cloudinary.com/demo/image/authenticated/signed-document.png",
     )
-    assert response.status_code == 200
-    assert response.content == b"PNG-test"
-    assert response.headers["cache-control"] == "private, no-store, max-age=0"
-    assert response.headers["content-disposition"] == "inline"
+    response = signed_in.get(
+        f"/api/experience/{experience_id}/documents/{document['id']}",
+        follow_redirects=False,
+    )
+    assert response.status_code == 307
+    assert response.headers["location"].endswith("signed-document.png")
+    assert response.headers["cache-control"] == "private, max-age=20"
     assert signed_in.get(
         f"/api/experience/{experience_id}/documents/not-a-real-document"
     ).status_code == 404
