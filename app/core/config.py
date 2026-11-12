@@ -91,6 +91,7 @@ class Settings(BaseSettings):
     GITHUB_MAX_BYTES: int = 750_000
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_API_VERSION: str = "v1beta"
     GEMINI_TIMEOUT_SECONDS: float = 45.0
     GEMINI_MAX_RETRIES: int = 2
 

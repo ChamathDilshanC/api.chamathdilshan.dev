@@ -294,7 +294,10 @@ async def generate_project_draft(analysis: RepositoryAnalysis) -> GeminiGenerati
         + json.dumps(analysis.model_dump(mode="json", by_alias=True), separators=(",", ":"))
     )
     try:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        client = genai.Client(
+            api_key=settings.GEMINI_API_KEY,
+            http_options=types.HttpOptions(api_version=settings.GEMINI_API_VERSION),
+        )
         config = types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=GEMINI_RESPONSE_SCHEMA,
