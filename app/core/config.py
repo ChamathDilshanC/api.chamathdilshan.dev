@@ -94,6 +94,15 @@ class Settings(BaseSettings):
     GEMINI_API_VERSION: str = "v1beta"
     GEMINI_TIMEOUT_SECONDS: float = 45.0
     GEMINI_MAX_RETRIES: int = 2
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
+    OPENROUTER_API_KEY: str = ""
+    OPENROUTER_MODEL: str = "openrouter/free"
+    AI_PROVIDER_ORDER: str = "gemini,groq,openrouter"
+    AI_FALLBACK_ENABLED: bool = True
+    AI_PROVIDER_TIMEOUT_SECONDS: float = 45.0
+    AI_MAX_RETRY_AFTER_SECONDS: float = 2.0
+    AI_TOTAL_TIMEOUT_SECONDS: float = 180.0
 
     @property
     def cors_origins(self) -> list[str]:
@@ -134,6 +143,15 @@ class Settings(BaseSettings):
     @property
     def admin_url(self) -> str:
         return f"{self.NEXT_APP_URL.rstrip('/')}/ChamathDilshanC"
+
+    @property
+    def ai_provider_order(self) -> list[str]:
+        allowed = {"gemini", "groq", "openrouter"}
+        return [
+            item
+            for item in (value.strip().lower() for value in self.AI_PROVIDER_ORDER.split(","))
+            if item in allowed
+        ]
 
 
 @lru_cache
