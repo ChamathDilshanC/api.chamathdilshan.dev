@@ -1,7 +1,16 @@
 """SQLAlchemy models. Importing this package registers every table on Base.metadata."""
 
 from app.models.auth import AdminSession, AuditLog, LoginChallenge
-from app.models.content import Experience, Media, Post, Project, Section, Skill
+from app.models.content import (
+    Experience,
+    Media,
+    Post,
+    Project,
+    ProjectRepository,
+    ProjectStudioDraft,
+    Section,
+    Skill,
+)
 
 __all__ = [
     "AdminSession",
@@ -11,6 +20,8 @@ __all__ = [
     "Media",
     "Post",
     "Project",
+    "ProjectRepository",
+    "ProjectStudioDraft",
     "Section",
     "Skill",
 ]

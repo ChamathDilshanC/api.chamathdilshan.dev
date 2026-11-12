@@ -1,7 +1,7 @@
 """Request / response models for projects, journal posts, skills, experience and media."""
 
 from datetime import date, datetime
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, ValidationInfo, field_validator, model_validator
 
@@ -59,6 +59,11 @@ class ProjectIn(CamelModel):
     ] = []
     live_url: ExternalUrl | None = Field(default=None, title="Live site URL")
     repo_url: ExternalUrl | None = Field(default=None, title="Source code URL")
+    template: Annotated[str, Field(max_length=40)] = "legacy"
+    template_config: dict[str, Any] = {}
+    studio_content: dict[str, Any] = {}
+    seo: dict[str, Any] = {}
+    repositories: list[dict[str, Any]] = []
     featured: bool = Field(default=True, description="Show in Selected Work on the home page.")
     published: bool = Field(default=False, description="Visible on the public site.")
 
@@ -94,6 +99,11 @@ class ProjectPublic(CamelModel):
     live_url: str | None
     repo_url: str | None
     featured: bool
+    template: str = "legacy"
+    template_config: dict[str, Any] = {}
+    studio_content: dict[str, Any] = {}
+    seo: dict[str, Any] = {}
+    repositories: list[dict[str, Any]] = []
 
 
 # --- journal posts ------------------------------------------------------------
