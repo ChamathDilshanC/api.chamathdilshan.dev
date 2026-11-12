@@ -5,6 +5,7 @@ evidence-labelled summary, never credentials, binary files, or an unbounded
 repository dump.
 """
 
+import html
 import re
 import uuid
 from datetime import UTC, datetime
@@ -246,7 +247,12 @@ def _repository_features(
     readme_path = next((path for path in texts if path.lower() in {"readme", "readme.md"}), None)
     if readme_path:
         for line in texts[readme_path].splitlines():
+            if re.match(r"^\s*<(?:p|img|h[1-6]|br)\b", line, re.I):
+                continue
             value = re.sub(r"^\s*[-*]\s+", "", line).strip()
+            value = html.unescape(re.sub(r"<[^>]+>", "", value))
+            value = re.sub(r"[*_`]+", "", value)
+            value = re.sub(r"\s+", " ", value).strip()
             if (
                 value
                 and len(value) >= 12
@@ -473,6 +479,8 @@ def _content_is_substantive(content: StudioContent, analysis: RepositoryAnalysis
     ]
     return (
         sum(bool(value and str(value).strip()) for value in meaningful) >= 3
+        and bool(case_study.get("problem") and str(case_study["problem"]).strip())
+        and bool(case_study.get("approach") and str(case_study["approach"]).strip())
         and bool(content.tech_stack or analysis.technologies)
         and bool(
             content.features or content.architecture or analysis.features or analysis.architecture
