@@ -57,6 +57,45 @@ def test_incomplete_content_is_not_treated_as_a_case_study() -> None:
     assert not studio._content_is_substantive(StudioContent(title="Demo"), analysis)
 
 
+def test_case_study_requires_problem_and_approach() -> None:
+    analysis = RepositoryAnalysis(
+        repository=RepositorySummary(
+            owner="owner",
+            name="demo",
+            full_name="owner/demo",
+            html_url="https://github.com/owner/demo",
+        ),
+        source_sha="abc123",
+        files_scanned=["README.md"],
+        technologies={"Backend": ["FastAPI"]},
+        architecture=["API routes are verified."],
+        features=["A repository-backed feature."],
+    )
+    content = StudioContent(
+        title="Demo",
+        summary="A verified summary.",
+        brief={"overview": "Overview", "purpose": "Purpose"},
+        case_study={"problem": "", "approach": ""},
+        features=["A repository-backed feature."],
+        tech_stack={"Backend": ["FastAPI"]},
+    )
+    assert not studio._content_is_substantive(content, analysis)
+
+
+def test_repository_features_strip_readme_markup() -> None:
+    features, _ = studio._repository_features(
+        ["README.md"],
+        {
+            "README.md": (
+                "<p align=\"center\">ignored</p>\n"
+                "<h1 align=\"center\">Upscalee</h1>\n"
+                "Right-click <b>Upscale with Upscalee</b> to choose 4K output."
+            )
+        },
+    )
+    assert features == ["Right-click Upscale with Upscalee to choose 4K output."]
+
+
 @pytest.mark.asyncio
 async def test_studio_project_maps_rich_content_to_legacy_fields() -> None:
     analysis = RepositoryAnalysis(

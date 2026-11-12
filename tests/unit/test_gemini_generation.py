@@ -190,6 +190,10 @@ async def test_generation_releases_session_before_provider_and_persists_usage(
                     brief={"overview": "A verified overview.", "purpose": "A verified purpose."},
                     tech_stack=[{"category": "Framework", "technologies": ["FastAPI"]}],
                     architecture=[{"title": "API", "body": "FastAPI routes are present."}],
+                    case_study={
+                        "problem": "A verified engineering problem.",
+                        "approach": "A verified engineering approach.",
+                    },
                 ),
                 token_usage={"totalTokens": 3},
             )
