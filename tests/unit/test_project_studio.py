@@ -1,7 +1,17 @@
-"""Pure safety and schema checks for GitHub AI Project Studio."""
+"""Safety, completeness and persistence checks for GitHub AI Project Studio."""
 
+import pytest
+
+from app.core import db as db_module
 from app.integrations.github import GitHubError, normalize_repository_url, redact_content
-from app.schemas.studio import StudioContent
+from app.models import ProjectStudioDraft
+from app.schemas.studio import (
+    CreateProjectFromDraftIn,
+    RepositoryAnalysis,
+    RepositorySummary,
+    StudioContent,
+)
+from app.services import studio
 
 
 def test_github_urls_are_normalized_without_accepting_other_hosts() -> None:
@@ -30,3 +40,75 @@ def test_secret_files_and_values_are_redacted() -> None:
 def test_studio_content_rejects_unstructured_ai_fields() -> None:
     content = StudioContent(title="Demo", summary="Verified summary")
     assert content.title == "Demo"
+
+
+def test_incomplete_content_is_not_treated_as_a_case_study() -> None:
+    analysis = RepositoryAnalysis(
+        repository=RepositorySummary(
+            owner="owner",
+            name="demo",
+            full_name="owner/demo",
+            html_url="https://github.com/owner/demo",
+        ),
+        source_sha="abc123",
+        files_scanned=["README.md"],
+    )
+    assert not studio._content_is_substantive(StudioContent(title="Demo"), analysis)
+
+
+@pytest.mark.asyncio
+async def test_studio_project_maps_rich_content_to_legacy_fields() -> None:
+    analysis = RepositoryAnalysis(
+        repository=RepositorySummary(
+            owner="owner",
+            name="demo",
+            full_name="owner/demo",
+            html_url="https://github.com/owner/demo",
+        ),
+        source_sha="abc123",
+        files_scanned=["README.md"],
+        technologies={"Backend": ["FastAPI"]},
+        architecture=["API routes are verified."],
+    )
+    content = StudioContent(
+        title="Demo",
+        summary="A verified summary.",
+        headline="A case study.",
+        brief={"overview": "Overview", "purpose": "Purpose", "users": "Users"},
+        architecture=[{"title": "API", "body": "FastAPI routes."}],
+        features=["Repository-backed feature"],
+        tech_stack={"Backend": ["FastAPI"]},
+        links={"github": "https://github.com/owner/demo", "live": "https://demo.example"},
+        case_study={"problem": "Problem", "approach": "Approach", "results": ["Result"]},
+    )
+    draft_id = "c" * 16
+    async with db_module.get_sessionmaker()() as db:
+        db.add(
+            ProjectStudioDraft(
+                id=draft_id,
+                repository_url="https://github.com/owner/demo",
+                source_sha=analysis.source_sha,
+                status="review",
+                analysis=analysis.model_dump(mode="json", by_alias=True),
+                content=content.model_dump(mode="json", by_alias=True),
+            )
+        )
+        await db.commit()
+        project = await studio.create_project(
+            db,
+            CreateProjectFromDraftIn(
+                draft_id=draft_id,
+                content=content,
+                publish=False,
+            ),
+        )
+
+        assert project.intro == "Overview"
+        assert project.discover == "Problem"
+        assert project.explore == "Approach"
+        assert project.results == [{"label": "Verified outcome 1", "value": "Result"}]
+        assert project.live_url == "https://demo.example"
+        assert project.published is False
+        assert project.studio_content["architecture"] == [
+            {"title": "API", "body": "FastAPI routes."}
+        ]
