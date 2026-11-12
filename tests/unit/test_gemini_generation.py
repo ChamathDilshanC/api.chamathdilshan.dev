@@ -185,14 +185,66 @@ async def test_generation_releases_session_before_provider_and_persists_usage(
             return GeminiGeneration(
                 content=GeminiDraft(
                     title="Generated",
-                    summary="A verified project summary.",
+                    summary=(
+                        "This project provides a verified workflow for handling repository-backed "
+                        "requests. Its documented boundaries make the main user journey and "
+                        "engineering trade-offs clear for review."
+                    ),
                     headline="A generated project case study.",
-                    brief={"overview": "A verified overview.", "purpose": "A verified purpose."},
+                    brief={
+                        "overview": (
+                            "The project organizes its user-facing workflow around documented "
+                            "repository modules and clear implementation boundaries. These modules "
+                            "provide the behavior described by the inspected source evidence."
+                        ),
+                        "purpose": (
+                            "The purpose is to make the repository workflow understandable and "
+                            "maintainable for the people using it. Responsibilities remain "
+                            "separated "
+                            "so changes can be reviewed against source files and tests."
+                        ),
+                    },
                     tech_stack=[{"category": "Framework", "technologies": ["FastAPI"]}],
-                    architecture=[{"title": "API", "body": "FastAPI routes are present."}],
+                    architecture=[
+                        {
+                            "title": "API",
+                            "body": (
+                                "FastAPI routes expose the documented service boundary and connect "
+                                "requests to the repository application behavior. Route and test "
+                                "evidence provide a traceable path for reviewing this flow."
+                            ),
+                        },
+                        {
+                            "title": "Application",
+                            "body": (
+                                "Application modules contain the user-facing behavior described by "
+                                "the project evidence. Their boundaries show where the main "
+                                "workflow "
+                                "is assembled and where changes should be reviewed."
+                            ),
+                        },
+                        {
+                            "title": "Quality",
+                            "body": (
+                                "The test boundary verifies the repository behavior supporting the "
+                                "project workflow. These checks connect implementation changes to "
+                                "repeatable evidence instead of an unverified claim."
+                            ),
+                        },
+                    ],
                     case_study={
-                        "problem": "A verified engineering problem.",
-                        "approach": "A verified engineering approach.",
+                        "problem": (
+                            "The original workflow made it difficult to understand how repository "
+                            "evidence mapped to the resulting project content. That ambiguity "
+                            "could "
+                            "leave important details hidden in the published case study."
+                        ),
+                        "approach": (
+                            "The implementation maps documented repository boundaries into "
+                            "editable "
+                            "project sections and preserves their evidence for review. Tests and "
+                            "source paths provide concrete references for the generated narrative."
+                        ),
                     },
                 ),
                 token_usage={"totalTokens": 3},
