@@ -4,7 +4,7 @@ and media."""
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, Date, Float, Integer, String, Text
+from sqlalchemy import Boolean, Date, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base, JSONType, UTCDateTime, utcnow
@@ -88,6 +88,9 @@ class ProjectRepository(Base):
     """A normalized repository association for one portfolio project."""
 
     __tablename__ = "project_repositories"
+    __table_args__ = (
+        UniqueConstraint("project_id", "url", name="uq_project_repositories_project_url"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project_id: Mapped[int] = mapped_column(Integer, index=True)
