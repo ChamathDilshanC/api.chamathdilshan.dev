@@ -130,7 +130,8 @@ async def test_timeout_retries_once_then_recovers(monkeypatch: pytest.MonkeyPatc
             return _response()
 
     models = FakeModels()
-    _install_fake_google(monkeypatch, models)
+    captured: dict[str, object] = {}
+    _install_fake_google(monkeypatch, models, captured)
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "configured-for-test")
     monkeypatch.setattr(settings, "GEMINI_MAX_RETRIES", 1)
     monkeypatch.setattr(gemini.asyncio, "sleep", _no_sleep)
@@ -138,6 +139,7 @@ async def test_timeout_retries_once_then_recovers(monkeypatch: pytest.MonkeyPatc
     result = await gemini.generate_project_draft(_analysis())
     assert result.content.title == "Demo"
     assert models.calls == 2
+    assert getattr(captured["http_options"], "api_version") == "v1beta"
 
 
 @pytest.mark.asyncio
@@ -223,20 +225,31 @@ async def _no_sleep(_: float) -> None:
     return None
 
 
-def _install_fake_google(monkeypatch: pytest.MonkeyPatch, models: object) -> None:
+def _install_fake_google(
+    monkeypatch: pytest.MonkeyPatch,
+    models: object,
+    captured: dict[str, object] | None = None,
+) -> None:
     google = ModuleType("google")
     genai = ModuleType("google.genai")
     types = ModuleType("google.genai.types")
 
     class FakeClient:
-        def __init__(self, **_: object) -> None:
+        def __init__(self, **kwargs: object) -> None:
+            if captured is not None:
+                captured.update(kwargs)
             self.aio = SimpleNamespace(models=models)
+
+    class HttpOptions:
+        def __init__(self, **kwargs: object) -> None:
+            self.__dict__.update(kwargs)
 
     class GenerateContentConfig:
         def __init__(self, **kwargs: object) -> None:
             self.__dict__.update(kwargs)
 
     genai.Client = FakeClient  # type: ignore[attr-defined]
+    types.HttpOptions = HttpOptions  # type: ignore[attr-defined]
     types.GenerateContentConfig = GenerateContentConfig  # type: ignore[attr-defined]
     google.genai = genai  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "google", google)
