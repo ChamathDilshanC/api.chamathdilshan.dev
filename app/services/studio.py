@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import flush_content
 from app.core.config import settings
-from app.integrations.gemini import GeminiGeneration, generate_project_draft
+from app.integrations.ai_fallback import AIGeneration, generate_with_fallback
 from app.integrations.github import (
     GitHubClient,
     GitHubError,
@@ -383,11 +383,11 @@ def _content_from_analysis(analysis: RepositoryAnalysis) -> StudioContent:
     )
 
 
-async def _gemini_generate(analysis: RepositoryAnalysis) -> GeminiGeneration:
-    return await generate_project_draft(analysis)
+async def _ai_generate(analysis: RepositoryAnalysis) -> AIGeneration:
+    return await generate_with_fallback(analysis)
 
 
-def _studio_content(result: GeminiGeneration, analysis: RepositoryAnalysis) -> StudioContent:
+def _studio_content(result: AIGeneration, analysis: RepositoryAnalysis) -> StudioContent:
     """Convert provider output while retaining only deterministic provenance."""
     payload = result.content.model_dump(mode="json", by_alias=True)
     tech_groups = payload.pop("techStack", [])
@@ -417,7 +417,9 @@ def draft_out(row: ProjectStudioDraft) -> StudioDraftOut:
         template=row.template,
         media_layout=row.media_layout,
         privacy_consent=row.privacy_consent,
+        provider=row.provider,
         model=row.model,
+        provider_failures=row.provider_failures or [],
         token_usage=row.token_usage,
         error=row.error,
         created_at=row.created_at,
@@ -451,7 +453,7 @@ async def generate(db: AsyncSession, data: GenerateDraftIn) -> ProjectStudioDraf
     # wait; the row is reloaded for the short result transaction below.
     await db.close()
     try:
-        result = await _gemini_generate(analysis)
+        result = await _ai_generate(analysis)
     except GitHubError as exc:
         failed = await db.get(ProjectStudioDraft, data.draft_id)
         if failed is not None:
@@ -465,7 +467,9 @@ async def generate(db: AsyncSession, data: GenerateDraftIn) -> ProjectStudioDraf
     content = _studio_content(result, analysis)
     row.content = content.model_dump(mode="json", by_alias=True)
     row.status = "review"
-    row.model = settings.GEMINI_MODEL
+    row.provider = getattr(result, "provider", "gemini")
+    row.model = getattr(result, "model", settings.GEMINI_MODEL)
+    row.provider_failures = [failure.__dict__ for failure in getattr(result, "failures", [])]
     row.token_usage = result.token_usage
     row.privacy_consent = row.privacy_consent or data.privacy_consent
     await db.commit()

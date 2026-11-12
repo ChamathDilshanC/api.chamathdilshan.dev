@@ -190,7 +190,7 @@ async def test_generation_releases_session_before_provider_and_persists_usage(
                 token_usage={"totalTokens": 3},
             )
 
-        monkeypatch.setattr(studio, "_gemini_generate", fake_generate)
+        monkeypatch.setattr(studio, "_ai_generate", fake_generate)
         result = await studio.generate(db, GenerateDraftIn(draft_id=draft_id))
 
         assert result.status == "review"

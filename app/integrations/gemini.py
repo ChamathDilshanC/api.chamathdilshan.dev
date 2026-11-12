@@ -252,7 +252,15 @@ def _provider_error(exc: Exception, *, stage: str = "request") -> GeminiGenerati
             retryable=True,
             diagnostics={**diagnostics, "provider_status": code},
         )
-    if code in {400, 404}:
+    if code == 404:
+        return GeminiGenerationError(
+            "The configured Gemini model is unavailable. Trying the next provider.",
+            503,
+            code="gemini_model_unavailable",
+            retryable=True,
+            diagnostics={**diagnostics, "provider_status": code},
+        )
+    if code == 400:
         return GeminiGenerationError(
             "Gemini rejected the generation request. Retry with a smaller analysis.",
             502,

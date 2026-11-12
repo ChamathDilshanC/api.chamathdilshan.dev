@@ -183,7 +183,9 @@ class StudioDraftOut(CamelModel):
     template: str
     media_layout: str
     privacy_consent: bool
+    provider: str | None
     model: str | None
+    provider_failures: list[dict[str, str]]
     token_usage: dict[str, int] | None
     error: str | None
     created_at: datetime
