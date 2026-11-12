@@ -76,6 +76,19 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "info"
     SENTRY_DSN: str = ""
 
+    # --- GitHub AI Project Studio ------------------------------------------
+    # These are server-only. Public repository discovery works without a token.
+    GITHUB_TOKEN: str = ""
+    GITHUB_ACCOUNT: str = "ChamathDilshanC"
+    GITHUB_API_URL: str = "https://api.github.com"
+    GITHUB_TIMEOUT_SECONDS: float = 15.0
+    GITHUB_MAX_FILES: int = 120
+    GITHUB_MAX_BYTES: int = 750_000
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_TIMEOUT_SECONDS: float = 45.0
+    GEMINI_MAX_RETRIES: int = 2
+
     @property
     def cors_origins(self) -> list[str]:
         return [o.strip().rstrip("/") for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]

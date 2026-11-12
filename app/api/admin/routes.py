@@ -10,7 +10,8 @@ from sqlalchemy import func, select
 from app.core.config import settings
 from app.core.http_cache import no_store
 from app.integrations.cloudinary import CloudinaryError
-from app.models import Media, Post, Project, Skill
+from app.integrations.github import GitHubError
+from app.models import Media, Post, Project, ProjectStudioDraft, Skill
 from app.schemas.common import CamelModel
 from app.schemas.entities import (
     AuditOut,
@@ -35,8 +36,26 @@ from app.schemas.entities import (
     SkillIn,
     SkillOut,
 )
+from app.schemas.studio import (
+    AnalyzeRepositoryIn,
+    CreateProjectFromDraftIn,
+    GenerateDraftIn,
+    RepositoryPage,
+    StudioDraftOut,
+    UpdateDraftIn,
+)
 from app.security.deps import DB, CurrentAdmin, require_admin, require_trusted_origin
-from app.services import audit, documents, experience, media, posts, projects, sections, skills
+from app.services import (
+    audit,
+    documents,
+    experience,
+    media,
+    posts,
+    projects,
+    sections,
+    skills,
+    studio,
+)
 from app.services.article_import import ArticleImportIn, ArticleImportOut, import_article
 
 
@@ -86,9 +105,10 @@ async def overview(db: DB) -> dict[str, Any]:
         "skills": await count(Skill),
         "media": await count(Media),
         "mediaConfigured": settings.cloudinary_configured,
-        "recent": [AuditOut.model_validate(r, from_attributes=True).model_dump(by_alias=True,
-                                                                               mode="json")
-                   for r in logs],
+        "recent": [
+            AuditOut.model_validate(r, from_attributes=True).model_dump(by_alias=True, mode="json")
+            for r in logs
+        ],
     }
 
 
@@ -102,6 +122,108 @@ async def schema(name: Literal["project", "post", "skill", "experience"]) -> dic
     """JSON Schema the admin renders its editors from."""
     result: dict[str, Any] = SCHEMAS[name].model_json_schema(by_alias=True)
     return result
+
+
+# --- GitHub AI Project Studio -----------------------------------------------
+
+
+def _studio_error(exc: GitHubError) -> HTTPException:
+    code = exc.status or 502
+    if code == 429:
+        code = status.HTTP_429_TOO_MANY_REQUESTS
+    if code not in {404, 428, 429, 502, 503}:
+        code = status.HTTP_502_BAD_GATEWAY
+    return HTTPException(code, detail=str(exc))
+
+
+@router.get("/github/repositories", response_model=RepositoryPage)
+async def github_repositories(
+    db: DB,
+    page: Annotated[int, Query(ge=1, le=100)] = 1,
+    per_page: Annotated[int, Query(ge=1, le=50)] = 20,
+    search: Annotated[str, Query(max_length=100)] = "",
+    sort: Annotated[str, Query(max_length=20)] = "updated",
+    visibility: Annotated[str, Query(pattern="^(all|public|private)$")] = "all",
+    include_forks: Annotated[bool, Query()] = True,
+    include_archived: Annotated[bool, Query()] = True,
+) -> RepositoryPage:
+    try:
+        return await studio.list_repositories(
+            db,
+            page,
+            per_page,
+            search,
+            sort,
+            visibility,
+            include_forks,
+            include_archived,
+        )
+    except GitHubError as exc:
+        raise _studio_error(exc) from exc
+
+
+@router.post("/github/analyze", response_model=StudioDraftOut, status_code=status.HTTP_201_CREATED)
+async def analyze_github_repository(
+    data: AnalyzeRepositoryIn, admin: CurrentAdmin, db: DB
+) -> StudioDraftOut:
+    try:
+        row = await studio.analyze(db, data)
+    except GitHubError as exc:
+        raise _studio_error(exc) from exc
+    await audit.record(
+        db, "project-studio.analyze", actor=admin.email, target=row.repository_url, ip=admin.ip
+    )
+    return studio.draft_out(row)
+
+
+@router.get("/studio/drafts/{draft_id}", response_model=StudioDraftOut)
+async def get_studio_draft(draft_id: str, db: DB) -> StudioDraftOut:
+    row = await db.get(ProjectStudioDraft, draft_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Studio draft not found.")
+    return studio.draft_out(row)
+
+
+@router.post("/studio/drafts/{draft_id}/generate", response_model=StudioDraftOut)
+async def generate_studio_draft(
+    draft_id: str, data: GenerateDraftIn, admin: CurrentAdmin, db: DB
+) -> StudioDraftOut:
+    if data.draft_id != draft_id:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Draft id does not match the request path."
+        )
+    try:
+        row = await studio.generate(db, data)
+    except GitHubError as exc:
+        raise _studio_error(exc) from exc
+    await audit.record(
+        db, "project-studio.generate", actor=admin.email, target=draft_id, ip=admin.ip
+    )
+    return studio.draft_out(row)
+
+
+@router.put("/studio/drafts/{draft_id}", response_model=StudioDraftOut)
+async def update_studio_draft(
+    draft_id: str, data: UpdateDraftIn, admin: CurrentAdmin, db: DB
+) -> StudioDraftOut:
+    try:
+        row = await studio.update_draft(db, draft_id, data)
+    except GitHubError as exc:
+        raise _studio_error(exc) from exc
+    await audit.record(db, "project-studio.review", actor=admin.email, target=draft_id, ip=admin.ip)
+    return studio.draft_out(row)
+
+
+@router.post("/studio/projects", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
+async def create_project_from_studio(
+    data: CreateProjectFromDraftIn, admin: CurrentAdmin, db: DB
+) -> ProjectOut:
+    try:
+        row = await studio.create_project(db, data)
+    except GitHubError as exc:
+        raise _studio_error(exc) from exc
+    await audit.record(db, "project-studio.create", actor=admin.email, target=row.slug, ip=admin.ip)
+    return projects.to_out(row)
 
 
 # --- sections -----------------------------------------------------------------
@@ -239,8 +361,9 @@ async def get_experience(experience_id: int, db: DB) -> Any:
 @router.post("/experience", response_model=ExperienceOut, status_code=status.HTTP_201_CREATED)
 async def create_experience(data: ExperienceIn, admin: CurrentAdmin, db: DB) -> Any:
     result = await experience.create(db, data)
-    await audit.record(db, "experience.create", actor=admin.email, target=result.company,
-                       ip=admin.ip)
+    await audit.record(
+        db, "experience.create", actor=admin.email, target=result.company, ip=admin.ip
+    )
     return result
 
 
@@ -249,8 +372,9 @@ async def update_experience(
     experience_id: int, data: ExperienceIn, admin: CurrentAdmin, db: DB
 ) -> Any:
     result = await experience.update(db, experience_id, data)
-    await audit.record(db, "experience.update", actor=admin.email, target=result.company,
-                       ip=admin.ip)
+    await audit.record(
+        db, "experience.update", actor=admin.email, target=result.company, ip=admin.ip
+    )
     return result
 
 
@@ -307,8 +431,7 @@ async def sign_upload(data: MediaSignIn | None = None) -> Any:
 @router.post("/media", response_model=MediaOut, status_code=status.HTTP_201_CREATED)
 async def register_media(data: MediaRegister, admin: CurrentAdmin, db: DB) -> Any:
     result = await media.register(db, data)
-    await audit.record(db, "media.upload", actor=admin.email, target=result.public_id,
-                       ip=admin.ip)
+    await audit.record(db, "media.upload", actor=admin.email, target=result.public_id, ip=admin.ip)
     return result
 
 

@@ -19,6 +19,7 @@ dependencies = [
     "cloudinary>=1.44",
     "redis>=5.2",
     "itsdangerous>=2.2",
+    "google-genai>=1.0",
 ]
 
 [project.optional-dependencies]

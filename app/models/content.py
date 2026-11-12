@@ -45,9 +45,61 @@ class Project(Base):
     tech: Mapped[list[str]] = mapped_column(JSONType, default=list)
     live_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     repo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    template: Mapped[str] = mapped_column(String(40), default="legacy")
+    template_config: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    studio_content: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    seo: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    repositories: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
     featured: Mapped[bool] = mapped_column(Boolean, default=True)
     published: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, index=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
+class ProjectStudioDraft(Base):
+    """Durable GitHub-to-portfolio workflow state.
+
+    Draft JSON is intentionally separate from the legacy project columns so an
+    incomplete import cannot alter an existing published project.
+    """
+
+    __tablename__ = "project_studio_drafts"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    project_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    repository_url: Mapped[str] = mapped_column(String(500), index=True)
+    source_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="analyzed", index=True)
+    analysis: Mapped[dict[str, Any]] = mapped_column(JSONType, default=dict)
+    content: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
+    template: Mapped[str] = mapped_column(String(40), default="minimal-case-study")
+    media_layout: Mapped[str] = mapped_column(String(40), default="cinematic-hero")
+    privacy_consent: Mapped[bool] = mapped_column(Boolean, default=False)
+    model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    token_usage: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
+class ProjectRepository(Base):
+    """A normalized repository association for one portfolio project."""
+
+    __tablename__ = "project_repositories"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    project_id: Mapped[int] = mapped_column(Integer, index=True)
+    url: Mapped[str] = mapped_column(String(500))
+    owner: Mapped[str] = mapped_column(String(120))
+    name: Mapped[str] = mapped_column(String(120))
+    role: Mapped[str] = mapped_column(String(40), default="other")
+    primary: Mapped[bool] = mapped_column(Boolean, default=False)
+    visibility: Mapped[str] = mapped_column(String(20), default="public")
+    repo_metadata: Mapped[dict[str, Any]] = mapped_column("metadata", JSONType, default=dict)
+    submodules: Mapped[list[dict[str, Any]]] = mapped_column(JSONType, default=list)
+    source_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
 

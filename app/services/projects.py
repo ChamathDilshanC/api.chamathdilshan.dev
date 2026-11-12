@@ -30,6 +30,11 @@ def to_out(row: Project) -> ProjectOut:
             "tech": row.tech or [],
             "liveUrl": row.live_url,
             "repoUrl": row.repo_url,
+            "template": row.template,
+            "templateConfig": row.template_config or {},
+            "studioContent": row.studio_content or {},
+            "seo": row.seo or {},
+            "repositories": row.repositories or [],
             "featured": row.featured,
             "published": row.published,
             "sortOrder": row.sort_order,
@@ -62,6 +67,11 @@ def to_public(row: Project) -> dict[str, Any] | None:
             "tech": row.tech or [],
             "liveUrl": row.live_url,
             "repoUrl": row.repo_url,
+            "template": row.template,
+            "templateConfig": row.template_config or {},
+            "studioContent": row.studio_content or {},
+            "seo": row.seo or {},
+            "repositories": row.repositories or [],
             "featured": row.featured,
         }
     )
@@ -84,6 +94,11 @@ def _apply(row: Project, data: ProjectIn) -> None:
     row.tech = list(dict.fromkeys(t for t in data.tech if t))
     row.live_url = data.live_url
     row.repo_url = data.repo_url
+    row.template = data.template
+    row.template_config = data.template_config
+    row.studio_content = data.studio_content
+    row.seo = data.seo
+    row.repositories = data.repositories
     row.featured = data.featured
     row.published = data.published
 
