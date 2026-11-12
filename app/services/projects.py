@@ -10,6 +10,7 @@ from app.core.cache import flush_content, get_or_set, key
 from app.models import Project, ProjectRepository
 from app.schemas.entities import ProjectIn, ProjectOut, ProjectPublic
 from app.services.common import dump, not_found, slugify, unique_slug
+from app.services.media import delete_project_assets
 
 
 def to_out(row: Project) -> ProjectOut:
@@ -149,6 +150,11 @@ async def update(db: AsyncSession, project_id: int, data: ProjectIn) -> ProjectO
 async def delete(db: AsyncSession, project_id: int) -> str:
     row = await get(db, project_id)
     slug = row.slug
+    await delete_project_assets(
+        db,
+        project_id,
+        [row.thumbnail, row.hero, row.gallery],
+    )
     await db.execute(
         sqlalchemy_delete(ProjectRepository).where(ProjectRepository.project_id == project_id)
     )
