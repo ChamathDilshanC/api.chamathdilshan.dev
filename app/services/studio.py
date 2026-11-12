@@ -390,6 +390,12 @@ async def _gemini_generate(analysis: RepositoryAnalysis) -> GeminiGeneration:
 def _studio_content(result: GeminiGeneration, analysis: RepositoryAnalysis) -> StudioContent:
     """Convert provider output while retaining only deterministic provenance."""
     payload = result.content.model_dump(mode="json", by_alias=True)
+    tech_groups = payload.pop("techStack", [])
+    payload["techStack"] = {
+        str(item["category"]): list(item["technologies"])
+        for item in tech_groups
+        if item.get("category")
+    }
     payload["evidence"] = [
         item.model_dump(mode="json", by_alias=True) for item in analysis.evidence
     ]
