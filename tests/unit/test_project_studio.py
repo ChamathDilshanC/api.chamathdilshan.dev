@@ -4,8 +4,8 @@ import pytest
 from sqlalchemy import select
 
 from app.core import db as db_module
-from app.integrations.github import GitHubError, normalize_repository_url, redact_content
 from app.integrations import cloudinary
+from app.integrations.github import GitHubError, normalize_repository_url, redact_content
 from app.models import Media, Project, ProjectRepository, ProjectStudioDraft
 from app.schemas.studio import (
     CreateProjectFromDraftIn,
