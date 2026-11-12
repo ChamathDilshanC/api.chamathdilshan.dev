@@ -131,7 +131,7 @@ def _studio_error(exc: GitHubError) -> HTTPException:
     code = exc.status or 502
     if code == 429:
         code = status.HTTP_429_TOO_MANY_REQUESTS
-    if code not in {404, 409, 428, 429, 502, 503, 504}:
+    if code not in {404, 409, 422, 428, 429, 502, 503, 504}:
         code = status.HTTP_502_BAD_GATEWAY
     return HTTPException(
         code,

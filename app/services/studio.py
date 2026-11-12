@@ -10,6 +10,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import HttpUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -90,7 +91,7 @@ def _summary(item: dict[str, Any]) -> RepositorySummary:
         owner=owner,
         name=name,
         full_name=str(item.get("full_name") or f"{owner}/{name}"),
-        html_url=item.get("html_url") or f"https://github.com/{owner}/{name}",
+        html_url=HttpUrl(str(item.get("html_url") or f"https://github.com/{owner}/{name}")),
         description=str(item.get("description") or ""),
         language=item.get("language"),
         visibility="private" if item.get("private") else "public",
@@ -236,6 +237,45 @@ def _technologies(
     return result, evidence
 
 
+def _repository_features(
+    paths: list[str], texts: dict[str, str]
+) -> tuple[list[str], list[Evidence]]:
+    """Extract conservative feature evidence for the AI prompt and fallback draft."""
+    features: list[str] = []
+    evidence: list[Evidence] = []
+    readme_path = next((path for path in texts if path.lower() in {"readme", "readme.md"}), None)
+    if readme_path:
+        for line in texts[readme_path].splitlines():
+            value = re.sub(r"^\s*[-*]\s+", "", line).strip()
+            if (
+                value
+                and len(value) >= 12
+                and len(value) <= 180
+                and not value.startswith("#")
+                and not re.match(r"(?i)^(installation|getting started|usage|license)\b", value)
+                and value not in features
+            ):
+                features.append(value)
+                evidence.append(
+                    Evidence(
+                        path=readme_path,
+                        claim=f"README documents: {value}",
+                        confidence="verified",
+                    )
+                )
+            if len(features) == 8:
+                break
+    if not features:
+        for path in paths:
+            if re.search(r"(?i)(auth|api|dashboard|checkout|search|upload|middleware|route)", path):
+                feature = f"{path.rsplit('/', 1)[-1]} is implemented in the repository."
+                features.append(feature)
+                evidence.append(Evidence(path=path, claim=feature, confidence="inferred"))
+            if len(features) == 5:
+                break
+    return features, evidence
+
+
 async def analyze(db: AsyncSession, data: AnalyzeRepositoryIn) -> ProjectStudioDraft:
     repository = normalize_repository_url(data.repository_url)
     client = GitHubClient()
@@ -280,6 +320,14 @@ async def analyze(db: AsyncSession, data: AnalyzeRepositoryIn) -> ProjectStudioD
                 redacted.append(path)
     submodules = _parse_submodules(texts.get(".gitmodules", ""), tree)
     technologies, evidence = _technologies(paths, texts)
+    features, feature_evidence = _repository_features(paths, texts)
+    evidence.extend(feature_evidence)
+    architecture = [
+        f"{category} components are represented by {', '.join(values)} in the repository evidence."
+        for category, values in technologies.items()
+    ]
+    if not architecture:
+        architecture = ["Repository structure and high-signal configuration were inspected."]
     analysis = RepositoryAnalysis(
         repository=summary,
         source_sha=source_sha,
@@ -288,8 +336,8 @@ async def analyze(db: AsyncSession, data: AnalyzeRepositoryIn) -> ProjectStudioD
         truncated=bool(omitted),
         redacted_files=redacted,
         technologies=technologies,
-        architecture=["Repository structure and high-signal configuration were inspected."],
-        features=[],
+        architecture=architecture,
+        features=features,
         media=media[:40],
         submodules=[SubmoduleEvidence.model_validate(item) for item in submodules],
         evidence=evidence,
@@ -399,9 +447,37 @@ def _studio_content(result: AIGeneration, analysis: RepositoryAnalysis) -> Studi
     payload["evidence"] = [
         item.model_dump(mode="json", by_alias=True) for item in analysis.evidence
     ]
+    # Provider output is authoritative where it contains substantive content,
+    # while deterministic repository evidence prevents a metadata-only draft.
+    payload["features"] = payload.get("features") or analysis.features
+    payload["architecture"] = payload.get("architecture") or [
+        {"title": "Repository architecture", "body": item} for item in analysis.architecture
+    ]
+    payload["techStack"] = payload.get("techStack") or analysis.technologies
     payload["slug"] = slugify(str(payload.get("slug") or payload.get("title") or "project"))
     payload.setdefault("links", {})["github"] = str(analysis.repository.html_url)
     return StudioContent.model_validate(payload)
+
+
+def _content_is_substantive(content: StudioContent, analysis: RepositoryAnalysis) -> bool:
+    """Reject syntactically valid provider responses that cannot be reviewed."""
+    brief = content.brief
+    case_study = content.case_study
+    meaningful = [
+        content.summary,
+        content.headline,
+        brief.get("overview", ""),
+        brief.get("purpose", ""),
+        case_study.get("problem", ""),
+        case_study.get("approach", ""),
+    ]
+    return (
+        sum(bool(value and str(value).strip()) for value in meaningful) >= 3
+        and bool(content.tech_stack or analysis.technologies)
+        and bool(
+            content.features or content.architecture or analysis.features or analysis.architecture
+        )
+    )
 
 
 def draft_out(row: ProjectStudioDraft) -> StudioDraftOut:
@@ -465,6 +541,14 @@ async def generate(db: AsyncSession, data: GenerateDraftIn) -> ProjectStudioDraf
     if row is None:
         raise GitHubError("Studio draft disappeared during generation.", 409, code="draft_lost")
     content = _studio_content(result, analysis)
+    if not _content_is_substantive(content, analysis):
+        row.status = "incomplete"
+        row.error = (
+            "The provider returned an incomplete project case study. "
+            "Regenerate the missing sections."
+        )
+        await db.commit()
+        raise GitHubError(row.error, 502, code="incomplete_draft")
     row.content = content.model_dump(mode="json", by_alias=True)
     row.status = "review"
     row.provider = getattr(result, "provider", "gemini")
@@ -494,8 +578,44 @@ async def create_project(db: AsyncSession, data: CreateProjectFromDraftIn) -> Pr
     draft = await db.get(ProjectStudioDraft, data.draft_id)
     if draft is None:
         raise GitHubError("Studio draft not found.", 404)
+    if draft.status not in {"review", "saved"}:
+        raise GitHubError(
+            "Review a complete Studio draft before creating a project.",
+            409,
+            code="draft_not_ready",
+        )
     content = data.content
     analysis = RepositoryAnalysis.model_validate(draft.analysis)
+    if not _content_is_substantive(content, analysis):
+        raise GitHubError(
+            "The Studio draft is incomplete. Add meaningful overview, architecture, "
+            "features, or stack content.",
+            422,
+            code="incomplete_draft",
+        )
+    repository_url = str(analysis.repository.html_url).rstrip("/")
+    existing = await db.scalar(
+        select(ProjectRepository).where(ProjectRepository.url == repository_url)
+    )
+    legacy_projects = await db.scalars(select(Project))
+    legacy_match = next(
+        (
+            project
+            for project in legacy_projects
+            if str(project.repo_url or "").rstrip("/") == repository_url
+            or any(
+                str(repository.get("url", "")).rstrip("/") == repository_url
+                for repository in project.repositories or []
+            )
+        ),
+        None,
+    )
+    if existing is not None or legacy_match is not None:
+        raise GitHubError(
+            "This repository is already associated with a portfolio project.",
+            409,
+            code="duplicate_repository",
+        )
     media = [
         {"kind": "image", "url": item["url"], "alt": item.get("path", content.title)}
         for item in data.media
@@ -509,18 +629,26 @@ async def create_project(db: AsyncSession, data: CreateProjectFromDraftIn) -> Pr
         category=content.category,
         year=content.year,
         summary=content.summary,
-        intro=content.brief.get("overview", ""),
-        discover=content.brief.get("purpose", ""),
-        explore=content.brief.get("users", ""),
-        results=[],
+        intro=content.brief.get("overview") or content.headline or content.summary,
+        discover=content.case_study.get("problem") or content.brief.get("purpose", ""),
+        explore=content.case_study.get("approach") or content.brief.get("users", ""),
+        results=[
+            {"label": f"Verified outcome {index}", "value": value}
+            for index, value in enumerate(
+                content.case_study.get("results", [])
+                if isinstance(content.case_study.get("results", []), list)
+                else [],
+                start=1,
+            )
+        ],
         thumbnail=media[0] if media else None,
         hero=media[0] if media else None,
         gallery=media,
         tech=[value for values in content.tech_stack.values() for value in values],
-        live_url=None,
+        live_url=content.links.get("live") or None,
         repo_url=content.links.get("github"),
         featured=False,
-        published=data.publish and bool(media),
+        published=bool(data.publish and media),
         template=data.template,
         template_config={"mediaLayout": data.media_layout},
         studio_content=content.model_dump(mode="json", by_alias=True),

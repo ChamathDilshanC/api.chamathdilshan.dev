@@ -185,7 +185,11 @@ async def test_generation_releases_session_before_provider_and_persists_usage(
             return GeminiGeneration(
                 content=GeminiDraft(
                     title="Generated",
+                    summary="A verified project summary.",
+                    headline="A generated project case study.",
+                    brief={"overview": "A verified overview.", "purpose": "A verified purpose."},
                     tech_stack=[{"category": "Framework", "technologies": ["FastAPI"]}],
+                    architecture=[{"title": "API", "body": "FastAPI routes are present."}],
                 ),
                 token_usage={"totalTokens": 3},
             )
