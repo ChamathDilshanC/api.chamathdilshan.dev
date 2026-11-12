@@ -282,6 +282,59 @@ def _repository_features(
     return features, evidence
 
 
+def _repository_architecture(
+    paths: list[str], texts: dict[str, str], technologies: dict[str, list[str]]
+) -> list[str]:
+    """Build architecture evidence from repository boundaries, not README prose."""
+    layers = (
+        ("Application surface", r"(^|/)(app|src|pages|routes|components|frontend|client)(/|$)"),
+        (
+            "Domain and data",
+            r"(^|/)(api|server|services|models|database|db|schema|migrations)(/|$)",
+        ),
+        (
+            "Delivery and quality",
+            r"(^|/)(\.github|tests?|specs?|docker|infra|terraform|scripts?)(/|$)",
+        ),
+    )
+    architecture: list[str] = []
+    for label, pattern in layers:
+        matches = [path for path in paths if re.search(pattern, path, re.I)]
+        if not matches:
+            continue
+        examples = ", ".join(matches[:6])
+        architecture.append(
+            f"{label} is represented by {examples}. "
+            f"This boundary shows where the repository keeps {label.lower()} responsibilities "
+            "and gives the implementation path to follow when tracing the project flow."
+        )
+    if len(architecture) < 3:
+        remaining = [path for path in paths if path not in "\n".join(architecture)]
+        for index, chunk in enumerate(
+            [remaining[:6], remaining[6:12], remaining[12:18]], start=1
+        ):
+            if chunk:
+                architecture.append(
+                    f"Repository boundary {index} is represented by {', '.join(chunk)}. "
+                    "These high-signal files provide the concrete source locations needed "
+                    "to trace how this part of the project is assembled."
+                )
+            if len(architecture) == 3:
+                break
+    if len(architecture) < 3:
+        technology_summary = ", ".join(
+            f"{category}: {', '.join(values)}"
+            for category, values in technologies.items()
+        )
+        architecture.append(
+            "Verified technology boundaries include "
+            f"{technology_summary or 'the scanned repository files'}. "
+            "These detected boundaries are the available evidence for the implementation flow; "
+            "unsupported runtime details must remain unclaimed."
+        )
+    return architecture[:6]
+
+
 async def analyze(db: AsyncSession, data: AnalyzeRepositoryIn) -> ProjectStudioDraft:
     repository = normalize_repository_url(data.repository_url)
     client = GitHubClient()
@@ -328,12 +381,7 @@ async def analyze(db: AsyncSession, data: AnalyzeRepositoryIn) -> ProjectStudioD
     technologies, evidence = _technologies(paths, texts)
     features, feature_evidence = _repository_features(paths, texts)
     evidence.extend(feature_evidence)
-    architecture = [
-        f"{category} components are represented by {', '.join(values)} in the repository evidence."
-        for category, values in technologies.items()
-    ]
-    if not architecture:
-        architecture = ["Repository structure and high-signal configuration were inspected."]
+    architecture = _repository_architecture(paths, texts, technologies)
     analysis = RepositoryAnalysis(
         repository=summary,
         source_sha=source_sha,
@@ -422,15 +470,16 @@ def _content_from_analysis(analysis: RepositoryAnalysis) -> StudioContent:
         seo_description=repo.description[:155] if repo.description else "",
         keywords=[value for values in tech.values() for value in values][:12],
         brief={"overview": repo.description or "", "purpose": "", "users": ""},
-        architecture=analysis.architecture
-        and [{"title": "Repository architecture", "body": analysis.architecture[0]}]
-        or [],
+        architecture=[
+            {"title": f"Architecture boundary {index}", "body": item}
+            for index, item in enumerate(analysis.architecture, start=1)
+        ],
         features=analysis.features,
         tech_stack=tech,
         links={"github": str(repo.html_url)},
         case_study={
             "problem": "",
-            "approach": analysis.architecture[0] if analysis.architecture else "",
+            "approach": " ".join(analysis.architecture[:3]),
             "results": [],
         },
         evidence=evidence,
@@ -457,7 +506,8 @@ def _studio_content(result: AIGeneration, analysis: RepositoryAnalysis) -> Studi
     # while deterministic repository evidence prevents a metadata-only draft.
     payload["features"] = payload.get("features") or analysis.features
     payload["architecture"] = payload.get("architecture") or [
-        {"title": "Repository architecture", "body": item} for item in analysis.architecture
+        {"title": f"Architecture boundary {index}", "body": item}
+        for index, item in enumerate(analysis.architecture, start=1)
     ]
     payload["techStack"] = payload.get("techStack") or analysis.technologies
     payload["slug"] = slugify(str(payload.get("slug") or payload.get("title") or "project"))
@@ -467,20 +517,24 @@ def _studio_content(result: AIGeneration, analysis: RepositoryAnalysis) -> Studi
 
 def _content_is_substantive(content: StudioContent, analysis: RepositoryAnalysis) -> bool:
     """Reject syntactically valid provider responses that cannot be reviewed."""
+    def has_depth(value: object, minimum_words: int = 24) -> bool:
+        words = re.findall(r"\b[\w'-]+\b", str(value or ""))
+        return len(words) >= minimum_words and len(str(value or "").strip()) >= 130
+
     brief = content.brief
     case_study = content.case_study
-    meaningful = [
-        content.summary,
-        content.headline,
-        brief.get("overview", ""),
-        brief.get("purpose", ""),
-        case_study.get("problem", ""),
-        case_study.get("approach", ""),
+    architecture = [
+        item
+        for item in content.architecture
+        if str(item.get("title", "")).strip() and has_depth(item.get("body", ""), 18)
     ]
     return (
-        sum(bool(value and str(value).strip()) for value in meaningful) >= 3
-        and bool(case_study.get("problem") and str(case_study["problem"]).strip())
-        and bool(case_study.get("approach") and str(case_study["approach"]).strip())
+        has_depth(content.summary)
+        and has_depth(brief.get("overview", ""))
+        and has_depth(brief.get("purpose", ""))
+        and has_depth(case_study.get("problem", ""))
+        and has_depth(case_study.get("approach", ""))
+        and len(architecture) >= 3
         and bool(content.tech_stack or analysis.technologies)
         and bool(
             content.features or content.architecture or analysis.features or analysis.architecture
@@ -596,8 +650,8 @@ async def create_project(db: AsyncSession, data: CreateProjectFromDraftIn) -> Pr
     analysis = RepositoryAnalysis.model_validate(draft.analysis)
     if not _content_is_substantive(content, analysis):
         raise GitHubError(
-            "The Studio draft is incomplete. Add meaningful overview, architecture, "
-            "features, or stack content.",
+            "The Studio draft is incomplete. Add three-line overview, purpose, problem, "
+            "approach, and at least three evidence-backed architecture sections.",
             422,
             code="incomplete_draft",
         )

@@ -83,6 +83,32 @@ def test_case_study_requires_problem_and_approach() -> None:
     assert not studio._content_is_substantive(content, analysis)
 
 
+def test_generated_content_requires_deep_architecture_and_narrative_sections() -> None:
+    analysis = RepositoryAnalysis(
+        repository=RepositorySummary(
+            owner="owner",
+            name="demo",
+            full_name="owner/demo",
+            html_url="https://github.com/owner/demo",
+        ),
+        source_sha="abc123",
+        files_scanned=["src/app.ts", "api/routes.py", "tests/test_api.py"],
+        technologies={"Backend": ["FastAPI"]},
+    )
+    content = StudioContent(
+        title="Demo",
+        summary="Short summary.",
+        brief={"overview": "Too short.", "purpose": "Too short."},
+        architecture=[
+            {"title": "How it works", "body": "Implemented with FastAPI and tests."}
+        ],
+        case_study={"problem": "Short.", "approach": "Short."},
+        features=["Repository-backed feature"],
+        tech_stack={"Backend": ["FastAPI"]},
+    )
+    assert not studio._content_is_substantive(content, analysis)
+
+
 def test_repository_features_strip_readme_markup() -> None:
     features, _ = studio._repository_features(
         ["README.md"],
@@ -113,14 +139,69 @@ async def test_studio_project_maps_rich_content_to_legacy_fields() -> None:
     )
     content = StudioContent(
         title="Demo",
-        summary="A verified summary.",
+        summary=(
+            "This project provides a verified workflow for handling repository-backed requests. "
+            "Its documented boundaries make the main user journey and engineering "
+            "trade-offs clear. "
+            "The summary is intentionally grounded in the files inspected during analysis."
+        ),
         headline="A case study.",
-        brief={"overview": "Overview", "purpose": "Purpose", "users": "Users"},
-        architecture=[{"title": "API", "body": "FastAPI routes."}],
+        brief={
+            "overview": (
+                "The project organizes its user-facing workflow around a small set of repository "
+                "modules and documented boundaries. Those modules provide the behavior described "
+                "by the source tree and keep the case study tied to verified evidence."
+            ),
+            "purpose": (
+                "The purpose is to make the repository workflow understandable and maintainable "
+                "for the people using it. The implementation separates responsibilities so changes "
+                "can be reviewed against the relevant source files and tests."
+            ),
+            "users": "Users of the documented repository workflow.",
+        },
+        architecture=[
+            {
+                "title": "API",
+                "body": (
+                    "FastAPI routes expose the documented service boundary and connect requests to "
+                    "the repository's application behavior. The route and test evidence provide a "
+                    "traceable path for reviewing this flow."
+                ),
+            },
+            {
+                "title": "Application",
+                "body": (
+                    "Application modules contain the user-facing behavior described by the project "
+                    "evidence. Their boundaries show where the main workflow is assembled and "
+                    "where future changes should be reviewed."
+                ),
+            },
+            {
+                "title": "Quality",
+                "body": (
+                    "The test boundary verifies the repository behavior that supports the project "
+                    "workflow. These checks connect implementation changes to repeatable evidence "
+                    "instead of relying on an unverified claim."
+                ),
+            },
+        ],
         features=["Repository-backed feature"],
         tech_stack={"Backend": ["FastAPI"]},
         links={"github": "https://github.com/owner/demo", "live": "https://demo.example"},
-        case_study={"problem": "Problem", "approach": "Approach", "results": ["Result"]},
+        case_study={
+            "problem": (
+                "The original workflow made it difficult to understand how repository evidence "
+                "mapped to the resulting project content. That ambiguity could leave important "
+                "details hidden or represented by generic text in the published case study."
+            ),
+            "approach": (
+                "The implementation maps the documented repository boundaries into editable "
+                "project "
+                "sections and preserves their evidence for review. Tests and source paths provide "
+                "the concrete references needed to validate the generated narrative."
+            ),
+            "results": ["Result"],
+        },
     )
     draft_id = "c" * 16
     async with db_module.get_sessionmaker()() as db:
@@ -144,15 +225,15 @@ async def test_studio_project_maps_rich_content_to_legacy_fields() -> None:
             ),
         )
 
-        assert project.intro == "Overview"
-        assert project.discover == "Problem"
-        assert project.explore == "Approach"
+        assert project.intro == content.brief["overview"]
+        assert project.discover == content.case_study["problem"]
+        assert project.explore == content.case_study["approach"]
         assert project.results == [{"label": "Verified outcome 1", "value": "Result"}]
         assert project.live_url == "https://demo.example"
         assert project.published is False
-        assert project.studio_content["architecture"] == [
-            {"title": "API", "body": "FastAPI routes."}
-        ]
+        assert project.studio_content["architecture"] == content.model_dump(
+            mode="json", by_alias=True
+        )["architecture"]
 
 
 @pytest.mark.asyncio
