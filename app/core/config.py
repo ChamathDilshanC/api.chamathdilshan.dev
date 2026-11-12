@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     # postgresql+asyncpg://… in production (Supabase), sqlite+aiosqlite://… locally.
     DATABASE_URL: str = "sqlite+aiosqlite:///./dev.db"
     DATABASE_ECHO: bool = False
+    # Keep each serverless instance below Supavisor's session-mode client cap.
+    DATABASE_POOL_SIZE: int = 2
+    DATABASE_MAX_OVERFLOW: int = 0
+    DATABASE_POOL_TIMEOUT_SECONDS: float = 5.0
+    DATABASE_POOL_RECYCLE_SECONDS: int = 300
 
     # --- Admin identity (SECURITY.md §4–§5) ---
     # The one Google account allowed into the admin panel.

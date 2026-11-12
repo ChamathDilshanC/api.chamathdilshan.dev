@@ -59,6 +59,13 @@ def _engine_kwargs(url: str) -> dict[str, Any]:
     kwargs: dict[str, Any] = {"echo": settings.DATABASE_ECHO, "pool_pre_ping": True}
     if url.startswith("sqlite"):
         kwargs.pop("pool_pre_ping")
+    else:
+        kwargs.update(
+            pool_size=settings.DATABASE_POOL_SIZE,
+            max_overflow=settings.DATABASE_MAX_OVERFLOW,
+            pool_timeout=settings.DATABASE_POOL_TIMEOUT_SECONDS,
+            pool_recycle=settings.DATABASE_POOL_RECYCLE_SECONDS,
+        )
     return kwargs
 
 

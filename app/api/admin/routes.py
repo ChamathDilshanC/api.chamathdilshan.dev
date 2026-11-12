@@ -131,9 +131,16 @@ def _studio_error(exc: GitHubError) -> HTTPException:
     code = exc.status or 502
     if code == 429:
         code = status.HTTP_429_TOO_MANY_REQUESTS
-    if code not in {404, 428, 429, 502, 503}:
+    if code not in {404, 409, 428, 429, 502, 503, 504}:
         code = status.HTTP_502_BAD_GATEWAY
-    return HTTPException(code, detail=str(exc))
+    return HTTPException(
+        code,
+        detail={
+            "code": exc.code or "studio_error",
+            "message": str(exc),
+        },
+        headers={"Retry-After": exc.retry_after} if exc.retry_after else None,
+    )
 
 
 @router.get("/github/repositories", response_model=RepositoryPage)
