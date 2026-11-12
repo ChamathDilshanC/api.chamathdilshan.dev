@@ -90,6 +90,13 @@ class GeminiCaseStudy(CamelModel):
     results: list[str] = []
 
 
+class GeminiTechGroup(CamelModel):
+    """Provider-safe representation of one technology category."""
+
+    category: str = ""
+    technologies: list[str] = []
+
+
 class GeminiDraft(CamelModel):
     """Small, provider-compatible response schema used for Gemini structured output.
 
@@ -108,7 +115,7 @@ class GeminiDraft(CamelModel):
     brief: GeminiBrief = Field(default_factory=GeminiBrief)
     architecture: list[GeminiArchitecture] = Field(default_factory=list)
     features: list[str] = Field(default_factory=list)
-    tech_stack: dict[str, list[str]] = Field(default_factory=dict)
+    tech_stack: list[GeminiTechGroup] = Field(default_factory=list)
     ai_usage: list[str] = Field(default_factory=list)
     links: GeminiLinks = Field(default_factory=GeminiLinks)
     case_study: GeminiCaseStudy = Field(default_factory=GeminiCaseStudy)

@@ -52,6 +52,14 @@ def test_response_schema_accepts_valid_json_and_records_usage() -> None:
     }
 
 
+def test_provider_schema_avoids_unsupported_dynamic_and_reference_shapes() -> None:
+    schema = gemini.GEMINI_RESPONSE_SCHEMA
+    assert schema["type"] == "object"
+    assert "$defs" not in schema
+    assert "additionalProperties" not in schema
+    assert schema["properties"]["techStack"]["type"] == "array"
+
+
 def test_response_uses_native_parsed_object_when_available() -> None:
     result = gemini._response_content(_response(parsed=GeminiDraft(title="Parsed")))
     assert result.title == "Parsed"
@@ -99,6 +107,15 @@ def test_provider_statuses_are_safely_classified(status: int) -> None:
     else:
         assert error.code == "gemini_unavailable"
         assert error.retryable
+
+
+def test_invalid_provider_request_diagnostics_are_sanitized() -> None:
+    error = gemini._provider_error(
+        ValueError("provider response contained a secret"), stage="configuration"
+    )
+    assert error.code == "gemini_invalid_request"
+    assert error.diagnostics == {"stage": "configuration", "exception_type": "ValueError"}
+    assert "secret" not in str(error).lower()
 
 
 @pytest.mark.asyncio
@@ -164,7 +181,10 @@ async def test_generation_releases_session_before_provider_and_persists_usage(
 
         async def fake_generate(_: RepositoryAnalysis) -> GeminiGeneration:
             return GeminiGeneration(
-                content=GeminiDraft(title="Generated"),
+                content=GeminiDraft(
+                    title="Generated",
+                    tech_stack=[{"category": "Framework", "technologies": ["FastAPI"]}],
+                ),
                 token_usage={"totalTokens": 3},
             )
 
@@ -174,6 +194,7 @@ async def test_generation_releases_session_before_provider_and_persists_usage(
         assert result.status == "review"
         assert result.token_usage == {"totalTokens": 3}
         assert result.content["title"] == "Generated"
+        assert result.content["techStack"] == {"Framework": ["FastAPI"]}
 
 
 @pytest.mark.asyncio

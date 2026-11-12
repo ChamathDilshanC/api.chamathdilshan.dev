@@ -43,6 +43,86 @@ class GeminiGeneration:
     token_usage: dict[str, int] | None
 
 
+# Keep this schema deliberately within Gemini's structured-output subset. In
+# particular, avoid Pydantic refs, defaults, min/max constraints, and dynamic
+# object keys: the SDK can serialize those locally but the provider rejects
+# them for response_schema on some model/API versions.
+GEMINI_RESPONSE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string"},
+        "slug": {"type": "string"},
+        "category": {"type": "string"},
+        "year": {"type": "string"},
+        "headline": {"type": "string"},
+        "summary": {"type": "string"},
+        "seoDescription": {"type": "string"},
+        "keywords": {"type": "array", "items": {"type": "string"}},
+        "brief": {
+            "type": "object",
+            "properties": {
+                "overview": {"type": "string"},
+                "purpose": {"type": "string"},
+                "users": {"type": "string"},
+            },
+            "required": ["overview", "purpose", "users"],
+        },
+        "architecture": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {"title": {"type": "string"}, "body": {"type": "string"}},
+                "required": ["title", "body"],
+            },
+        },
+        "features": {"type": "array", "items": {"type": "string"}},
+        "techStack": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string"},
+                    "technologies": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["category", "technologies"],
+            },
+        },
+        "aiUsage": {"type": "array", "items": {"type": "string"}},
+        "links": {
+            "type": "object",
+            "properties": {"github": {"type": "string"}, "live": {"type": "string"}},
+            "required": ["github", "live"],
+        },
+        "caseStudy": {
+            "type": "object",
+            "properties": {
+                "problem": {"type": "string"},
+                "approach": {"type": "string"},
+                "results": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["problem", "approach", "results"],
+        },
+    },
+    "required": [
+        "title",
+        "slug",
+        "category",
+        "year",
+        "headline",
+        "summary",
+        "seoDescription",
+        "keywords",
+        "brief",
+        "architecture",
+        "features",
+        "techStack",
+        "aiUsage",
+        "links",
+        "caseStudy",
+    ],
+}
+
+
 def _status_code(exc: Exception) -> int | None:
     for name in ("status_code", "code"):
         value = getattr(exc, name, None)
@@ -146,13 +226,15 @@ def _response_content(response: Any) -> GeminiDraft:
         ) from exc
 
 
-def _provider_error(exc: Exception) -> GeminiGenerationError:
+def _provider_error(exc: Exception, *, stage: str = "request") -> GeminiGenerationError:
     code = _status_code(exc)
+    diagnostics = {"stage": stage, "exception_type": type(exc).__name__}
     if isinstance(exc, ValueError):
         return GeminiGenerationError(
-            "Gemini rejected the generation configuration. Retry with a smaller analysis.",
+            "Gemini rejected the generation request. Retry with a smaller analysis.",
             502,
             code="gemini_invalid_request",
+            diagnostics=diagnostics,
         )
     if code in {401, 403}:
         return GeminiGenerationError(
@@ -160,7 +242,7 @@ def _provider_error(exc: Exception) -> GeminiGenerationError:
             "provider configuration.",
             502,
             code="gemini_authentication",
-            diagnostics={"provider_status": code},
+            diagnostics={**diagnostics, "provider_status": code},
         )
     if code == 429:
         return GeminiGenerationError(
@@ -168,21 +250,21 @@ def _provider_error(exc: Exception) -> GeminiGenerationError:
             429,
             code="gemini_rate_limited",
             retryable=True,
-            diagnostics={"provider_status": code},
+            diagnostics={**diagnostics, "provider_status": code},
         )
     if code in {400, 404}:
         return GeminiGenerationError(
             "Gemini rejected the generation request. Retry with a smaller analysis.",
             502,
             code="gemini_invalid_request",
-            diagnostics={"provider_status": code},
+            diagnostics={**diagnostics, "provider_status": code},
         )
     return GeminiGenerationError(
         "Gemini is temporarily unavailable. Retry later.",
         503,
         code="gemini_unavailable",
         retryable=True,
-        diagnostics={"provider_status": code} if code else {},
+        diagnostics={**diagnostics, **({"provider_status": code} if code else {})},
     )
 
 
@@ -215,10 +297,10 @@ async def generate_project_draft(analysis: RepositoryAnalysis) -> GeminiGenerati
         client = genai.Client(api_key=settings.GEMINI_API_KEY)
         config = types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=GeminiDraft,
+            response_schema=GEMINI_RESPONSE_SCHEMA,
         )
     except Exception as exc:  # SDK exception types vary by google-genai version.
-        raise _provider_error(exc) from exc
+        raise _provider_error(exc, stage="configuration") from exc
     attempts = max(0, settings.GEMINI_MAX_RETRIES) + 1
     last_error: GeminiGenerationError | None = None
     for attempt in range(attempts):
@@ -246,7 +328,7 @@ async def generate_project_draft(analysis: RepositoryAnalysis) -> GeminiGenerati
                 retryable=True,
             )
         except Exception as exc:  # SDK exception types vary by google-genai version.
-            last_error = _provider_error(exc)
+            last_error = _provider_error(exc, stage="request")
             log.warning(
                 "Gemini generation attempt failed",
                 extra={"code": last_error.code, **last_error.diagnostics},
