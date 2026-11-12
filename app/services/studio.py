@@ -595,7 +595,9 @@ async def create_project(db: AsyncSession, data: CreateProjectFromDraftIn) -> Pr
         )
     repository_url = str(analysis.repository.html_url).rstrip("/")
     existing = await db.scalar(
-        select(ProjectRepository).where(ProjectRepository.url == repository_url)
+        select(ProjectRepository)
+        .join(Project, Project.id == ProjectRepository.project_id)
+        .where(ProjectRepository.url == repository_url)
     )
     legacy_projects = await db.scalars(select(Project))
     legacy_match = next(

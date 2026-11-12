@@ -1,17 +1,18 @@
 """Safety, completeness and persistence checks for GitHub AI Project Studio."""
 
 import pytest
+from sqlalchemy import select
 
 from app.core import db as db_module
 from app.integrations.github import GitHubError, normalize_repository_url, redact_content
-from app.models import ProjectStudioDraft
+from app.models import Project, ProjectRepository, ProjectStudioDraft
 from app.schemas.studio import (
     CreateProjectFromDraftIn,
     RepositoryAnalysis,
     RepositorySummary,
     StudioContent,
 )
-from app.services import studio
+from app.services import projects, studio
 
 
 def test_github_urls_are_normalized_without_accepting_other_hosts() -> None:
@@ -112,3 +113,35 @@ async def test_studio_project_maps_rich_content_to_legacy_fields() -> None:
         assert project.studio_content["architecture"] == [
             {"title": "API", "body": "FastAPI routes."}
         ]
+
+
+@pytest.mark.asyncio
+async def test_project_delete_removes_repository_associations() -> None:
+    async with db_module.get_sessionmaker()() as db:
+        project = Project(
+            slug="association-cleanup-test",
+            title="Association cleanup test",
+            repositories=[{"url": "https://github.com/owner/association-cleanup"}],
+        )
+        db.add(project)
+        await db.flush()
+        db.add(
+            ProjectRepository(
+                project_id=project.id,
+                url="https://github.com/owner/association-cleanup",
+                owner="owner",
+                name="association-cleanup",
+            )
+        )
+        await db.commit()
+
+        await projects.delete(db, project.id)
+
+        assert (
+            await db.scalar(
+                select(ProjectRepository).where(
+                    ProjectRepository.url == "https://github.com/owner/association-cleanup"
+                )
+            )
+            is None
+        )
