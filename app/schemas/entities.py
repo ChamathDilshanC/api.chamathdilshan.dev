@@ -59,9 +59,22 @@ class ProjectIn(CamelModel):
     ] = []
     live_url: ExternalUrl | None = Field(default=None, title="Live site URL")
     repo_url: ExternalUrl | None = Field(default=None, title="Source code URL")
-    template: Annotated[str, Field(max_length=40)] = "legacy"
+    template: Annotated[
+        Literal[
+            "legacy",
+            "minimal-case-study",
+            "editorial-technical-story",
+            "product-showcase",
+            "architecture-deep-dive",
+            "opensource-showcase",
+        ],
+        Field(json_schema_extra=widget("project-template")),
+    ] = "legacy"
     template_config: dict[str, Any] = {}
-    studio_content: dict[str, Any] = {}
+    studio_content: Annotated[
+        dict[str, Any],
+        Field(json_schema_extra=widget("project-content")),
+    ] = {}
     seo: dict[str, Any] = {}
     repositories: list[dict[str, Any]] = []
     featured: bool = Field(default=True, description="Show in Selected Work on the home page.")
