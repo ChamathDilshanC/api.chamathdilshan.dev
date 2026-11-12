@@ -68,6 +68,52 @@ class RepositoryAnalysis(CamelModel):
     warnings: list[str] = []
 
 
+class GeminiBrief(CamelModel):
+    overview: str = ""
+    purpose: str = ""
+    users: str = ""
+
+
+class GeminiArchitecture(CamelModel):
+    title: str = ""
+    body: str = ""
+
+
+class GeminiLinks(CamelModel):
+    github: str = ""
+    live: str = ""
+
+
+class GeminiCaseStudy(CamelModel):
+    problem: str = ""
+    approach: str = ""
+    results: list[str] = []
+
+
+class GeminiDraft(CamelModel):
+    """Small, provider-compatible response schema used for Gemini structured output.
+
+    Evidence is deliberately excluded: it is copied from the deterministic GitHub
+    analysis so the model cannot manufacture provenance.
+    """
+
+    title: Annotated[str, Field(min_length=1, max_length=120)]
+    slug: str = ""
+    category: str = ""
+    year: str = ""
+    headline: str = ""
+    summary: str = ""
+    seo_description: str = ""
+    keywords: list[str] = []
+    brief: GeminiBrief = Field(default_factory=GeminiBrief)
+    architecture: list[GeminiArchitecture] = Field(default_factory=list)
+    features: list[str] = Field(default_factory=list)
+    tech_stack: dict[str, list[str]] = Field(default_factory=dict)
+    ai_usage: list[str] = Field(default_factory=list)
+    links: GeminiLinks = Field(default_factory=GeminiLinks)
+    case_study: GeminiCaseStudy = Field(default_factory=GeminiCaseStudy)
+
+
 class StudioContent(CamelModel):
     title: Annotated[str, Field(min_length=1, max_length=120)]
     slug: Slug | None = None

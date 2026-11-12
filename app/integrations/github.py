@@ -27,10 +27,20 @@ MEDIA = re.compile(r"(?i)\.(png|jpe?g|webp|gif|svg|mp4|webm)$")
 
 
 class GitHubError(RuntimeError):
-    def __init__(self, message: str, status: int | None = None, retry_after: str | None = None):
+    def __init__(
+        self,
+        message: str,
+        status: int | None = None,
+        retry_after: str | None = None,
+        *,
+        code: str | None = None,
+        retryable: bool = False,
+    ):
         super().__init__(message)
         self.status = status
         self.retry_after = retry_after
+        self.code = code
+        self.retryable = retryable
 
 
 @dataclass(frozen=True)
