@@ -130,6 +130,29 @@ async def usages(db: AsyncSession, row: Media) -> list[MediaUsage]:
     return found
 
 
+async def delete_project_assets(db: AsyncSession, project_id: int, assets: object) -> None:
+    """Destroy media owned exclusively by a project before deleting the project."""
+    encoded_assets = json.dumps(assets, default=str)
+    if not encoded_assets:
+        return
+
+    for row in await db.scalars(select(Media)):
+        if row.public_id not in encoded_assets and row.url not in encoded_assets:
+            continue
+        used_elsewhere = [
+            usage for usage in await usages(db, row)
+            if usage.where != f"project:{project_id}"
+        ]
+        if used_elsewhere:
+            continue
+        if settings.cloudinary_configured:
+            try:
+                await cloudinary.destroy(row.public_id, row.kind)
+            except cloudinary.CloudinaryError as exc:
+                raise HTTPException(status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        await db.delete(row)
+
+
 async def delete(db: AsyncSession, media_id: int, *, force: bool) -> Media:
     row = await get(db, media_id)
     if not force:

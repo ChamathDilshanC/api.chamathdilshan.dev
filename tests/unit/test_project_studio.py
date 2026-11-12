@@ -5,7 +5,8 @@ from sqlalchemy import select
 
 from app.core import db as db_module
 from app.integrations.github import GitHubError, normalize_repository_url, redact_content
-from app.models import Project, ProjectRepository, ProjectStudioDraft
+from app.integrations import cloudinary
+from app.models import Media, Project, ProjectRepository, ProjectStudioDraft
 from app.schemas.studio import (
     CreateProjectFromDraftIn,
     RepositoryAnalysis,
@@ -184,3 +185,42 @@ async def test_project_delete_removes_repository_associations() -> None:
             )
             is None
         )
+
+
+@pytest.mark.asyncio
+async def test_project_delete_destroys_exclusive_media_but_preserves_shared_media(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    destroyed: list[tuple[str, str]] = []
+
+    async def fake_destroy(public_id: str, resource_type: str, **_: object) -> None:
+        destroyed.append((public_id, resource_type))
+
+    monkeypatch.setattr(cloudinary, "destroy", fake_destroy)
+    async with db_module.get_sessionmaker()() as db:
+        project = Project(
+            slug="media-cleanup-test",
+            title="Media cleanup test",
+            thumbnail={"url": "https://res.cloudinary.com/demo/image/upload/v1/site/owned.jpg"},
+            hero={"url": "https://res.cloudinary.com/demo/image/upload/v1/site/shared.jpg"},
+        )
+        shared = Project(
+            slug="media-shared-test",
+            title="Media shared test",
+            thumbnail={"url": "https://res.cloudinary.com/demo/image/upload/v1/site/shared.jpg"},
+        )
+        db.add_all([project, shared])
+        await db.flush()
+        db.add_all(
+            [
+                Media(public_id="site/owned", kind="image", url=project.thumbnail["url"]),
+                Media(public_id="site/shared", kind="image", url=shared.thumbnail["url"]),
+            ]
+        )
+        await db.commit()
+
+        await projects.delete(db, project.id)
+
+        assert destroyed == [("site/owned", "image")]
+        assert await db.scalar(select(Media).where(Media.public_id == "site/owned")) is None
+        assert await db.scalar(select(Media).where(Media.public_id == "site/shared")) is not None
