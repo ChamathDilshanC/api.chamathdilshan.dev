@@ -295,12 +295,13 @@ def _configured_providers() -> list[AIProvider]:
             "groq", settings.GROQ_API_KEY, settings.GROQ_MODEL, "https://api.groq.com/openai/v1"
         )
     if settings.OPENROUTER_API_KEY:
-        providers["openrouter"] = OpenAICompatibleProvider(
-            "openrouter",
-            settings.OPENROUTER_API_KEY,
-            settings.OPENROUTER_MODEL,
-            "https://openrouter.ai/api/v1",
-        )
+        model = settings.OPENROUTER_MODEL.strip()
+        if model == "openrouter/free" or model.endswith(":free"):
+            providers["openrouter"] = OpenAICompatibleProvider(
+                "openrouter", settings.OPENROUTER_API_KEY, model, "https://openrouter.ai/api/v1"
+            )
+        else:
+            log.error("OpenRouter provider disabled because its configured model is not free")
     return [providers[name] for name in settings.ai_provider_order if name in providers]
 
 
@@ -318,7 +319,7 @@ class _GeminiProvider:
         return result.content, result.token_usage
 
 
-async def generate_with_fallback(analysis: RepositoryAnalysis) -> AIGeneration:
+async def _generate_with_fallback(analysis: RepositoryAnalysis) -> AIGeneration:
     providers = _configured_providers()
     if not providers:
         raise AIProviderError(
@@ -346,3 +347,16 @@ async def generate_with_fallback(analysis: RepositoryAnalysis) -> AIGeneration:
     raise AIProviderError(
         "All configured AI providers are unavailable.", 503, code="ai_unavailable", retryable=True
     )
+
+
+async def generate_with_fallback(analysis: RepositoryAnalysis) -> AIGeneration:
+    try:
+        async with asyncio.timeout(settings.AI_TOTAL_TIMEOUT_SECONDS):
+            return await _generate_with_fallback(analysis)
+    except TimeoutError as exc:
+        raise AIProviderError(
+            "AI generation exceeded the configured time budget.",
+            504,
+            code="ai_timeout",
+            retryable=True,
+        ) from exc

@@ -102,6 +102,7 @@ class Settings(BaseSettings):
     AI_FALLBACK_ENABLED: bool = True
     AI_PROVIDER_TIMEOUT_SECONDS: float = 45.0
     AI_MAX_RETRY_AFTER_SECONDS: float = 2.0
+    AI_TOTAL_TIMEOUT_SECONDS: float = 180.0
 
     @property
     def cors_origins(self) -> list[str]:

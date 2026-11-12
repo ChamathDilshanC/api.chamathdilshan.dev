@@ -91,3 +91,11 @@ def test_openai_schema_is_strict_at_every_object_level() -> None:
         if value.get("type") == "object":
             assert value["additionalProperties"] is False
             assert set(value["required"]) == set(value["properties"])
+
+
+def test_openrouter_paid_model_override_is_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "OPENROUTER_API_KEY", "configured")
+    monkeypatch.setattr(settings, "OPENROUTER_MODEL", "openai/gpt-4o")
+    monkeypatch.setattr(settings, "AI_PROVIDER_ORDER", "openrouter")
+
+    assert ai_fallback._configured_providers() == []
