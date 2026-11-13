@@ -40,6 +40,7 @@ from app.schemas.studio import (
     UpdateDraftIn,
 )
 from app.services.common import slugify, unique_slug
+from app.services.projects import cms_summary
 
 _GITMODULE = re.compile(
     r"^\s*\[submodule \"(?P<name>[^\"]+)\"\]\s*$|^\s*(?P<key>path|url)\s*=\s*(?P<value>.+?)\s*$",
@@ -721,7 +722,7 @@ async def create_project(db: AsyncSession, data: CreateProjectFromDraftIn) -> Pr
         title=content.title,
         category=content.category,
         year=content.year,
-        summary=content.summary,
+        summary=cms_summary(content.summary),
         intro=content.brief.get("overview") or content.headline or content.summary,
         discover=content.case_study.get("problem") or content.brief.get("purpose", ""),
         explore=content.case_study.get("approach") or content.brief.get("users", ""),

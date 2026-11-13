@@ -13,6 +13,11 @@ from app.services.common import dump, not_found, slugify, unique_slug
 from app.services.media import delete_project_assets
 
 
+def cms_summary(value: str | None) -> str:
+    """Keep legacy and generated summaries within the CMS line-field limit."""
+    return (value or "")[:300].rstrip()
+
+
 def to_out(row: Project) -> ProjectOut:
     return ProjectOut.model_validate(
         {
@@ -21,7 +26,7 @@ def to_out(row: Project) -> ProjectOut:
             "title": row.title,
             "category": row.category,
             "year": row.year,
-            "summary": row.summary,
+            "summary": cms_summary(row.summary),
             "thumbnail": row.thumbnail,
             "hero": row.hero,
             "intro": row.intro,
