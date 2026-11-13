@@ -1,5 +1,7 @@
 """Safety, completeness and persistence checks for GitHub AI Project Studio."""
 
+from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy import select
 
@@ -42,6 +44,27 @@ def test_secret_files_and_values_are_redacted() -> None:
 def test_studio_content_rejects_unstructured_ai_fields() -> None:
     content = StudioContent(title="Demo", summary="Verified summary")
     assert content.title == "Demo"
+
+
+def test_legacy_overlong_summary_is_bounded_for_admin_output() -> None:
+    row = Project(
+        id=1,
+        slug="legacy-summary",
+        title="Legacy summary",
+        category="Tools",
+        year="2026",
+        summary="summary " * 100,
+        intro="Intro",
+        discover="Discover",
+        explore="Explore",
+        template="legacy",
+        featured=False,
+        published=False,
+        sort_order=1,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    assert len(projects.to_out(row).summary) == 300
 
 
 def test_incomplete_content_is_not_treated_as_a_case_study() -> None:
