@@ -542,6 +542,10 @@ def _content_is_substantive(content: StudioContent, analysis: RepositoryAnalysis
     )
 
 
+def _repository_key(value: object) -> str:
+    return str(value or "").strip().rstrip("/").lower()
+
+
 def draft_out(row: ProjectStudioDraft) -> StudioDraftOut:
     return StudioDraftOut(
         id=row.id,
@@ -656,27 +660,52 @@ async def create_project(db: AsyncSession, data: CreateProjectFromDraftIn) -> Pr
             code="incomplete_draft",
         )
     repository_url = str(analysis.repository.html_url).rstrip("/")
-    existing = await db.scalar(
-        select(ProjectRepository)
-        .join(Project, Project.id == ProjectRepository.project_id)
-        .where(ProjectRepository.url == repository_url)
+    repository_key = _repository_key(repository_url)
+    associations = list(
+        await db.scalars(
+            select(ProjectRepository).where(ProjectRepository.url.ilike(repository_url))
+        )
+    )
+    project_ids = set(await db.scalars(select(Project.id)))
+    orphan_associations = [
+        association
+        for association in associations
+        if association.project_id not in project_ids
+    ]
+    for association in orphan_associations:
+        await db.delete(association)
+    if orphan_associations:
+        await db.flush()
+    existing = next(
+        (
+            association
+            for association in associations
+            if association.project_id in project_ids
+        ),
+        None,
     )
     legacy_projects = await db.scalars(select(Project))
     legacy_match = next(
         (
             project
             for project in legacy_projects
-            if str(project.repo_url or "").rstrip("/") == repository_url
+            if _repository_key(project.repo_url) == repository_key
             or any(
-                str(repository.get("url", "")).rstrip("/") == repository_url
+                _repository_key(repository.get("url")) == repository_key
                 for repository in project.repositories or []
             )
         ),
         None,
     )
     if existing is not None or legacy_match is not None:
+        associated_name = (
+            legacy_match.title
+            if legacy_match is not None
+            else f"project #{existing.project_id}" if existing is not None else "another project"
+        )
         raise GitHubError(
-            "This repository is already associated with a portfolio project.",
+            f"This repository is already associated with {associated_name}. "
+            "Delete that project completely before importing it again.",
             409,
             code="duplicate_repository",
         )

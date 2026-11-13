@@ -123,6 +123,12 @@ def test_repository_features_strip_readme_markup() -> None:
     assert features == ["Right-click Upscale with Upscalee to choose 4K output."]
 
 
+def test_repository_keys_ignore_case_and_trailing_slashes() -> None:
+    assert studio._repository_key("https://github.com/Owner/Demo/") == (
+        "https://github.com/owner/demo"
+    )
+
+
 @pytest.mark.asyncio
 async def test_studio_project_maps_rich_content_to_legacy_fields() -> None:
     analysis = RepositoryAnalysis(
