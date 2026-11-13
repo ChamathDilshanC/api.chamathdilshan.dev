@@ -147,6 +147,7 @@ class StudioContent(CamelModel):
 class AnalyzeRepositoryIn(CamelModel):
     repository_url: str = Field(min_length=1, max_length=500)
     privacy_consent: bool = False
+    include_submodules: bool = True
 
 
 class GenerateDraftIn(CamelModel):

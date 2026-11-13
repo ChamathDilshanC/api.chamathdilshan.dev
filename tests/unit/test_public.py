@@ -31,7 +31,7 @@ def test_public_reads_are_shared_cacheable_with_etag(client: TestClient) -> None
 def test_public_reads_are_cached_by_vercels_cdn(client: TestClient) -> None:
     # Keep public reads at the edge so a cold Vercel function does not delay
     # every visitor. Admin edits become visible after the short edge TTL.
-    for path in ("/api/content", "/api/projects", "/api/posts", "/api/skills",
+    for path in ("/api/content", "/api/posts", "/api/skills",
                  "/api/experience"):
         res = client.get(path)
         assert res.headers["vercel-cdn-cache-control"].startswith("public, s-maxage=300"), path
@@ -39,6 +39,12 @@ def test_public_reads_are_cached_by_vercels_cdn(client: TestClient) -> None:
         again = client.get(path, headers={"If-None-Match": res.headers["etag"]})
         assert again.status_code == 304
         assert again.headers["vercel-cdn-cache-control"].startswith("public, s-maxage=300"), path
+
+
+def test_project_reads_are_never_stored_at_the_edge(client: TestClient) -> None:
+    response = client.get("/api/projects")
+    assert response.headers["cache-control"].startswith("private, no-store")
+    assert "vercel-cdn-cache-control" not in response.headers
 
 
 def test_private_and_immutable_policies_leave_vercels_cdn_alone() -> None:
