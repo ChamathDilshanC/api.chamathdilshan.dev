@@ -8,6 +8,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    _PRODUCTION_ORIGINS = (
+        "https://chamathdilshan.dev",
+        "https://www.chamathdilshan.dev",
+        "https://chamathdilshan-dev.vercel.app",
+    )
+
     # --- Application ---
     APP_ENV: str = "development"
     APP_DEBUG: bool = False
@@ -106,7 +112,8 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        return [o.strip().rstrip("/") for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        configured = [o.strip().rstrip("/") for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
+        return list(dict.fromkeys([*configured, *self._PRODUCTION_ORIGINS]))
 
     @property
     def is_production(self) -> bool:
