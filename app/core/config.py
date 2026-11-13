@@ -9,9 +9,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     _PRODUCTION_ORIGINS = (
-        "https://chamathdilshan.dev",
-        "https://www.chamathdilshan.dev",
-        "https://chamathdilshan-dev.vercel.app",
+        "https://chamathdilshan.com",
+        "https://www.chamathdilshan.com",
     )
 
     # --- Application ---
