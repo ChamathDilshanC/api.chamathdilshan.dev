@@ -131,6 +131,13 @@ async def revalidate_frontend(tags: list[str], paths: list[str]) -> None:
                 headers={"x-revalidate-secret": settings.CACHE_REVALIDATE_SECRET},
                 json={"tags": tags, "paths": paths},
             )
+            if response.is_error:
+                log.error(
+                    "frontend revalidation rejected with HTTP %s: tags=%s paths=%s",
+                    response.status_code,
+                    tags,
+                    paths,
+                )
             response.raise_for_status()
     except httpx.HTTPError:
         log.exception("frontend revalidation failed: tags=%s paths=%s", tags, paths)
