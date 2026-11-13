@@ -115,6 +115,13 @@ class Settings(BaseSettings):
         return list(dict.fromkeys([*configured, *self._PRODUCTION_ORIGINS]))
 
     @property
+    def frontend_revalidation_url(self) -> str:
+        """Use the canonical public host for production cache invalidation."""
+        if self.is_production and self.NEXT_APP_URL.endswith("chamathdilshan.dev"):
+            return "https://www.chamathdilshan.com"
+        return self.NEXT_APP_URL.rstrip("/")
+
+    @property
     def is_production(self) -> bool:
         return self.APP_ENV == "production"
 
