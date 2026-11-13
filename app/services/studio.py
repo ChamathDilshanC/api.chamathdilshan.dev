@@ -21,6 +21,7 @@ from app.integrations.ai_fallback import AIGeneration, generate_with_fallback
 from app.integrations.github import (
     GitHubClient,
     GitHubError,
+    GitHubRepository,
     normalize_repository_url,
     redact_content,
 )
@@ -51,7 +52,6 @@ _TECH_RULES = {
         ("package.json", "JavaScript/TypeScript"),
         ("next.config", "Next.js"),
         ("vite.config", "Vite"),
-        ("src/", "Frontend"),
     ],
     "Backend": [
         ("pyproject.toml", "Python"),
@@ -73,6 +73,24 @@ _TECH_RULES = {
         ("vercel.json", "Vercel"),
     ],
 }
+_DEPENDENCY_RULES = (
+    (r'"next"\s*:', "Frontend", "Next.js"),
+    (r'"react"\s*:', "Frontend", "React"),
+    (r'"(?:typescript|@types/node)"\s*:', "Frontend", "TypeScript"),
+    (r'"vite"\s*:', "Frontend", "Vite"),
+    (r'"(?:tailwindcss|@tailwindcss/)', "Frontend", "Tailwind CSS"),
+    (r"(?i)\bfastapi\b", "Backend", "FastAPI"),
+    (r"(?i)\bdjango\b", "Backend", "Django"),
+    (r"(?i)\bflask\b", "Backend", "Flask"),
+    (r"(?i)\bsqlalchemy\b", "Database", "SQLAlchemy"),
+    (r"(?i)\balembic\b", "Database", "Alembic"),
+    (r"(?i)(?:@aws-sdk/|['\"]boto3['\"])", "Cloud", "AWS SDK"),
+    (r"(?i)<targetframework[^>]*>net", "Backend", ".NET"),
+    (r"(?i)<packagereference[^>]+include=['\"]avalonia", "Frontend", "Avalonia"),
+    (r"(?i)\bffmpeg\b", "Media", "FFmpeg"),
+    (r"(?i)\b(cargo\.toml|rustc|rust-lang)\b", "Languages", "Rust"),
+    (r"(?i)^module\s+", "Languages", "Go"),
+)
 
 
 def _summary(item: dict[str, Any]) -> RepositorySummary:
@@ -105,6 +123,7 @@ def _summary(item: dict[str, Any]) -> RepositorySummary:
         fork=bool(item.get("fork")),
         archived=bool(item.get("archived")),
         has_readme=item.get("has_readme"),
+        homepage=str(item.get("homepage") or ""),
     )
 
 
@@ -236,7 +255,74 @@ def _technologies(
                     )
         if values:
             result[category] = values
+    for pattern, category, technology in _DEPENDENCY_RULES:
+        dependency_path: str | None = next(
+            (path for path, text in texts.items() if re.search(pattern, text, re.I | re.M)),
+            next((path for path in paths if re.search(pattern, path, re.I | re.M)), None),
+        )
+        if dependency_path:
+            values = result.setdefault(category, [])
+            if technology not in values:
+                values.append(technology)
+                evidence.append(
+                    Evidence(
+                        path=dependency_path,
+                        claim=f"{technology} is present in the repository evidence.",
+                        confidence="verified",
+                    )
+                )
     return result, evidence
+
+
+def _merge_technologies(
+    target: dict[str, list[str]], additions: dict[str, list[str]]
+) -> None:
+    for category, values in additions.items():
+        current = target.setdefault(category, [])
+        for value in values:
+            if value not in current:
+                current.append(value)
+
+
+def _live_url(summary: RepositorySummary, texts: dict[str, str]) -> str:
+    homepage = summary.homepage.strip()
+    if homepage.startswith(("http://", "https://")) and "github.com" not in homepage.lower():
+        return homepage
+    for text in texts.values():
+        for candidate in re.findall(r"https?://[^\s)>\"]+", text):
+            candidate = str(candidate)
+            candidate = candidate.rstrip(".,;")
+            lower = candidate.lower()
+            if "github.com" not in lower and "shields.io" not in lower:
+                return candidate
+    return ""
+
+
+def _submodule_role(path: str, name: str) -> str:
+    value = f"{path} {name}".lower()
+    if any(token in value for token in ("frontend", "client", "web", "ui")):
+        return "frontend"
+    if any(token in value for token in ("backend", "server", "api", "service")):
+        return "backend"
+    return "other"
+
+
+def _resolve_submodule_repository(
+    parent: GitHubRepository, url: str | None
+) -> GitHubRepository | None:
+    if not url:
+        return None
+    value = url.strip()
+    if value.startswith("git@github.com:"):
+        value = f"https://github.com/{value.removeprefix('git@github.com:')}"
+    elif value.startswith("../"):
+        value = f"https://github.com/{parent.owner}/{value.removeprefix('../')}"
+    elif not value.startswith(("http://", "https://")):
+        value = f"https://github.com/{parent.owner}/{value}"
+    try:
+        return normalize_repository_url(value)
+    except GitHubError:
+        return None
 
 
 def _repository_features(
@@ -383,6 +469,65 @@ async def analyze(db: AsyncSession, data: AnalyzeRepositoryIn) -> ProjectStudioD
     features, feature_evidence = _repository_features(paths, texts)
     evidence.extend(feature_evidence)
     architecture = _repository_architecture(paths, texts, technologies)
+    live_url = _live_url(summary, texts)
+    for submodule in submodules[:4]:
+        submodule["role"] = _submodule_role(
+            str(submodule.get("path", "")), str(submodule.get("name", ""))
+        )
+        submodule_repository = _resolve_submodule_repository(
+            repository, submodule.get("url")
+        )
+        if not submodule_repository or not submodule.get("sha"):
+            warnings.append(
+                f"Submodule {submodule.get('path', 'unknown')} has no accessible GitHub URL."
+            )
+            continue
+        try:
+            submodule_metadata = await client.repository(submodule_repository)
+            submodule_summary = _summary(submodule_metadata)
+            submodule_tree = await client.tree(
+                submodule_repository, str(submodule.get("sha"))
+            )
+            submodule_paths, _ = _select_files(submodule_tree)
+            submodule_texts: dict[str, str] = {}
+            for submodule_path in submodule_paths:
+                if SENSITIVE_PATH(submodule_path):
+                    continue
+                content = await client.file(
+                    submodule_repository, submodule_path, str(submodule.get("sha"))
+                )
+                if content is None:
+                    continue
+                safe, _ = redact_content(submodule_path, content)
+                if safe is not None:
+                    submodule_texts[submodule_path] = safe[: settings.GITHUB_MAX_BYTES]
+            submodule_technologies, submodule_evidence = _technologies(
+                submodule_paths, submodule_texts
+            )
+            _merge_technologies(technologies, submodule_technologies)
+            for item in submodule_evidence:
+                item.path = f"{submodule['path']}/{item.path}"
+            evidence.extend(submodule_evidence)
+            submodule["accessible"] = True
+            submodule["source_sha"] = str(submodule.get("sha"))
+            submodule["technologies"] = submodule_technologies
+            submodule_stack = ", ".join(
+                submodule_technologies.get("Frontend", [])
+                + submodule_technologies.get("Backend", [])
+            ) or "the linked source tree"
+            architecture.append(
+                f"The {submodule['role']} boundary is provided by the "
+                f"{submodule['name']} submodule at {submodule['path']}. "
+                f"Its verified repository evidence includes {submodule_stack}, "
+                f"which is assembled into the {summary.name} repository at commit "
+                f"{submodule['sha'][:12]}."
+            )
+            if not live_url:
+                live_url = _live_url(submodule_summary, submodule_texts)
+        except GitHubError as exc:
+            warnings.append(
+                f"Submodule {submodule.get('path', 'unknown')} could not be analyzed: {exc}"
+            )
     analysis = RepositoryAnalysis(
         repository=summary,
         source_sha=source_sha,
@@ -397,6 +542,7 @@ async def analyze(db: AsyncSession, data: AnalyzeRepositoryIn) -> ProjectStudioD
         submodules=[SubmoduleEvidence.model_validate(item) for item in submodules],
         evidence=evidence,
         warnings=warnings,
+        live_url=live_url,
     )
     draft = ProjectStudioDraft(
         id=uuid.uuid4().hex,
@@ -477,7 +623,7 @@ def _content_from_analysis(analysis: RepositoryAnalysis) -> StudioContent:
         ],
         features=analysis.features,
         tech_stack=tech,
-        links={"github": str(repo.html_url)},
+        links={"github": str(repo.html_url), "live": analysis.live_url},
         case_study={
             "problem": "",
             "approach": " ".join(analysis.architecture[:3]),
@@ -495,8 +641,10 @@ def _studio_content(result: AIGeneration, analysis: RepositoryAnalysis) -> Studi
     """Convert provider output while retaining only deterministic provenance."""
     payload = result.content.model_dump(mode="json", by_alias=True)
     tech_groups = payload.pop("techStack", [])
-    payload["techStack"] = {
-        str(item["category"]): list(item["technologies"])
+    generated_technologies = {
+        str(item["category"]): [
+            value for value in item["technologies"] if str(value).strip().lower() != "frontend"
+        ]
         for item in tech_groups
         if item.get("category")
     }
@@ -510,9 +658,13 @@ def _studio_content(result: AIGeneration, analysis: RepositoryAnalysis) -> Studi
         {"title": f"Architecture boundary {index}", "body": item}
         for index, item in enumerate(analysis.architecture, start=1)
     ]
-    payload["techStack"] = payload.get("techStack") or analysis.technologies
+    _merge_technologies(generated_technologies, analysis.technologies)
+    payload["techStack"] = generated_technologies
     payload["slug"] = slugify(str(payload.get("slug") or payload.get("title") or "project"))
     payload.setdefault("links", {})["github"] = str(analysis.repository.html_url)
+    payload["links"]["live"] = (
+        str(payload["links"].get("live") or analysis.live_url or analysis.repository.homepage)
+    )
     return StudioContent.model_validate(payload)
 
 
