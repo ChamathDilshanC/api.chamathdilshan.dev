@@ -152,6 +152,45 @@ def test_repository_keys_ignore_case_and_trailing_slashes() -> None:
     )
 
 
+def test_repository_technology_detection_reads_dependency_manifests() -> None:
+    technologies, evidence = studio._technologies(
+        ["package.json", "pyproject.toml"],
+        {
+            "package.json": (
+                '{"dependencies":{"next":"14.0.0","react":"18.0.0",'
+                '"tailwindcss":"3.4.0"}}'
+            ),
+            "pyproject.toml": "fastapi = '^0.115'\nsqlalchemy = '^2.0'\n",
+        },
+    )
+    assert technologies["Frontend"] == ["JavaScript/TypeScript", "Next.js", "React", "Tailwind CSS"]
+    assert technologies["Backend"] == ["Python", "FastAPI"]
+    assert technologies["Database"] == ["SQLAlchemy"]
+    assert {item.path for item in evidence} >= {"package.json", "pyproject.toml"}
+
+
+def test_submodule_repository_urls_resolve_relative_github_links() -> None:
+    parent = studio.normalize_repository_url("https://github.com/owner/main")
+    resolved = studio._resolve_submodule_repository(parent, "../frontend")
+    assert resolved is not None
+    assert resolved.url == "https://github.com/owner/frontend"
+
+
+def test_repository_live_url_uses_verified_homepage_or_readme_link() -> None:
+    summary = RepositorySummary(
+        owner="owner",
+        name="demo",
+        full_name="owner/demo",
+        html_url="https://github.com/owner/demo",
+        homepage="https://demo.example",
+    )
+    assert studio._live_url(summary, {}) == "https://demo.example"
+    summary = summary.model_copy(update={"homepage": ""})
+    assert studio._live_url(
+        summary, {"README.md": "Try the app at https://demo.example/app."}
+    ) == "https://demo.example/app"
+
+
 @pytest.mark.asyncio
 async def test_studio_project_maps_rich_content_to_legacy_fields() -> None:
     analysis = RepositoryAnalysis(

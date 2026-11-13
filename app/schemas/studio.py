@@ -24,6 +24,7 @@ class RepositorySummary(CamelModel):
     fork: bool = False
     archived: bool = False
     has_readme: bool | None = None
+    homepage: str = ""
     imported_project_id: int | None = None
     imported_project_slug: str | None = None
 
@@ -43,6 +44,8 @@ class SubmoduleEvidence(CamelModel):
     sha: str
     accessible: bool = False
     role: str = "other"
+    source_sha: str | None = None
+    technologies: dict[str, list[str]] = {}
 
 
 class Evidence(CamelModel):
@@ -66,6 +69,7 @@ class RepositoryAnalysis(CamelModel):
     submodules: list[SubmoduleEvidence] = []
     evidence: list[Evidence] = []
     warnings: list[str] = []
+    live_url: str = ""
 
 
 class GeminiBrief(CamelModel):
