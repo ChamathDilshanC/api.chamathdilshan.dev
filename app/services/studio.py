@@ -360,8 +360,14 @@ def _repository_features(
     evidence: list[Evidence] = []
     readme_path = next((path for path in texts if path.lower() in {"readme", "readme.md"}), None)
     if readme_path:
-        for line in texts[readme_path].splitlines():
+        readme_lines = texts[readme_path].splitlines()
+        for index, line in enumerate(readme_lines):
             if re.match(r"^\s*<(?:p|img|h[1-6]|br)\b", line, re.I):
+                continue
+            next_line = readme_lines[index + 1].strip() if index + 1 < len(readme_lines) else ""
+            if "|" in line and re.fullmatch(
+                r"\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?", next_line
+            ):
                 continue
             value = re.sub(r"^\s*[-*]\s+", "", line).strip()
             if re.fullmatch(r"\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?", value):
