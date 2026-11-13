@@ -126,11 +126,12 @@ async def revalidate_frontend(tags: list[str], paths: list[str]) -> None:
         return
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(
-                f"{settings.NEXT_APP_URL}/api/revalidate",
+            response = await client.post(
+                f"{settings.frontend_revalidation_url}/api/revalidate",
                 headers={"x-revalidate-secret": settings.CACHE_REVALIDATE_SECRET},
                 json={"tags": tags, "paths": paths},
             )
+            response.raise_for_status()
     except httpx.HTTPError:
         log.exception("frontend revalidation failed: tags=%s paths=%s", tags, paths)
 
