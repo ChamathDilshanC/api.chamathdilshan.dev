@@ -143,6 +143,29 @@ async def test_timeout_retries_once_then_recovers(monkeypatch: pytest.MonkeyPatc
 
 
 @pytest.mark.asyncio
+async def test_generation_prompt_requires_deep_case_study_sections(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeModels:
+        contents = ""
+
+        async def generate_content(self, **kwargs: object) -> object:
+            self.contents = str(kwargs["contents"])
+            return _response()
+
+    models = FakeModels()
+    _install_fake_google(monkeypatch, models)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "configured-for-test")
+    monkeypatch.setattr(settings, "GEMINI_MAX_RETRIES", 0)
+
+    await gemini.generate_project_draft(_analysis())
+
+    assert "at least 3 sentences" in models.contents
+    assert "at least 3 distinct evidence-grounded items" in models.contents
+    assert "generic statements" in models.contents
+
+
+@pytest.mark.asyncio
 async def test_timeout_exhaustion_is_504_and_does_not_leak_exception(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
