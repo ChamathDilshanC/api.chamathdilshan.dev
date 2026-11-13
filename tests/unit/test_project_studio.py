@@ -191,6 +191,12 @@ def test_repository_live_url_uses_verified_homepage_or_readme_link() -> None:
     ) == "https://demo.example/app"
 
 
+def test_generated_text_removes_markdown_table_artifacts() -> None:
+    assert studio._clean_generated_text(
+        "| Area | Capability |\n|------|------------|\n| Auth | Session handling |"
+    ) == "Area: Capability Auth: Session handling"
+
+
 @pytest.mark.asyncio
 async def test_studio_project_maps_rich_content_to_legacy_fields() -> None:
     analysis = RepositoryAnalysis(

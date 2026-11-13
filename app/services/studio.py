@@ -298,6 +298,33 @@ def _live_url(summary: RepositorySummary, texts: dict[str, str]) -> str:
     return ""
 
 
+def _clean_generated_text(value: str) -> str:
+    lines: list[str] = []
+    for raw_line in value.splitlines():
+        line = raw_line.strip()
+        if not line or re.fullmatch(r"\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?", line):
+            continue
+        if "|" in line:
+            cells = [cell.strip() for cell in line.strip("|").split("|") if cell.strip()]
+            line = ": ".join(cells)
+        line = re.sub(r"^\s*#{1,6}\s*", "", line)
+        line = re.sub(r"[*_`]+", "", line)
+        line = re.sub(r"\s+", " ", line).strip()
+        if line:
+            lines.append(line)
+    return " ".join(lines)
+
+
+def _sanitize_studio_payload(value: Any) -> Any:
+    if isinstance(value, str):
+        return _clean_generated_text(value)
+    if isinstance(value, list):
+        return [_sanitize_studio_payload(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _sanitize_studio_payload(item) for key, item in value.items()}
+    return value
+
+
 def _submodule_role(path: str, name: str) -> str:
     value = f"{path} {name}".lower()
     if any(token in value for token in ("frontend", "client", "web", "ui")):
@@ -337,6 +364,11 @@ def _repository_features(
             if re.match(r"^\s*<(?:p|img|h[1-6]|br)\b", line, re.I):
                 continue
             value = re.sub(r"^\s*[-*]\s+", "", line).strip()
+            if re.fullmatch(r"\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?", value):
+                continue
+            if "|" in value:
+                cells = [cell.strip() for cell in value.strip("|").split("|") if cell.strip()]
+                value = ": ".join(cells)
             value = html.unescape(re.sub(r"<[^>]+>", "", value))
             value = re.sub(r"[*_`]+", "", value)
             value = re.sub(r"\s+", " ", value).strip()
@@ -470,6 +502,8 @@ async def analyze(db: AsyncSession, data: AnalyzeRepositoryIn) -> ProjectStudioD
     evidence.extend(feature_evidence)
     architecture = _repository_architecture(paths, texts, technologies)
     live_url = _live_url(summary, texts)
+    if not data.include_submodules:
+        submodules = []
     for submodule in submodules[:4]:
         submodule["role"] = _submodule_role(
             str(submodule.get("path", "")), str(submodule.get("name", ""))
@@ -509,6 +543,7 @@ async def analyze(db: AsyncSession, data: AnalyzeRepositoryIn) -> ProjectStudioD
                 item.path = f"{submodule['path']}/{item.path}"
             evidence.extend(submodule_evidence)
             submodule["accessible"] = True
+            submodule["url"] = submodule_repository.url
             submodule["source_sha"] = str(submodule.get("sha"))
             submodule["technologies"] = submodule_technologies
             submodule_stack = ", ".join(
@@ -639,7 +674,9 @@ async def _ai_generate(analysis: RepositoryAnalysis) -> AIGeneration:
 
 def _studio_content(result: AIGeneration, analysis: RepositoryAnalysis) -> StudioContent:
     """Convert provider output while retaining only deterministic provenance."""
-    payload = result.content.model_dump(mode="json", by_alias=True)
+    payload = _sanitize_studio_payload(
+        result.content.model_dump(mode="json", by_alias=True)
+    )
     tech_groups = payload.pop("techStack", [])
     generated_technologies = {
         str(item["category"]): [
@@ -784,7 +821,7 @@ async def update_draft(db: AsyncSession, draft_id: str, data: UpdateDraftIn) -> 
     row = await db.get(ProjectStudioDraft, draft_id)
     if row is None:
         raise GitHubError("Studio draft not found.", 404)
-    row.content = data.content.model_dump(mode="json", by_alias=True)
+    row.content = _sanitize_studio_payload(data.content.model_dump(mode="json", by_alias=True))
     row.template = data.template
     row.media_layout = data.media_layout
     row.status = "review"
@@ -803,7 +840,9 @@ async def create_project(db: AsyncSession, data: CreateProjectFromDraftIn) -> Pr
             409,
             code="draft_not_ready",
         )
-    content = data.content
+    content = StudioContent.model_validate(
+        _sanitize_studio_payload(data.content.model_dump(mode="json", by_alias=True))
+    )
     analysis = RepositoryAnalysis.model_validate(draft.analysis)
     if not _content_is_substantive(content, analysis):
         raise GitHubError(
@@ -910,6 +949,25 @@ async def create_project(db: AsyncSession, data: CreateProjectFromDraftIn) -> Pr
                 "language": analysis.repository.language,
                 "stars": analysis.repository.stars,
             }
+        ]
+        + [
+            {
+                "url": str(item.url),
+                "name": item.name,
+                "owner": (
+                    str(item.url).rstrip("/").split("/")[-2]
+                    if len(str(item.url).rstrip("/").split("/")) >= 2
+                    else item.name
+                ),
+                "role": item.role,
+                "primary": False,
+                "visibility": "public",
+                "language": None,
+                "stars": 0,
+                "submodulePath": item.path,
+            }
+            for item in analysis.submodules
+            if item.url
         ],
     )
     db.add(row)

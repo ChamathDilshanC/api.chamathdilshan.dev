@@ -6,7 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Path, Request, Response, status
 from fastapi.responses import RedirectResponse
 
-from app.core.http_cache import PUBLIC_CONTENT, apply_cache
+from app.core.http_cache import PUBLIC_CONTENT, apply_cache, no_store
 from app.integrations.cloudinary import CloudinaryError
 from app.security.deps import DB
 from app.services import documents, experience, posts, projects, sections, skills
@@ -35,15 +35,18 @@ async def content(request: Request, response: Response, db: DB) -> Any:
 
 @router.get("/projects")
 async def list_projects(request: Request, response: Response, db: DB) -> Any:
-    return _cached(request, response, await projects.public_list(db))
+    payload = await projects.public_list(db)
+    no_store(response)
+    return payload
 
 
 @router.get("/projects/{slug}")
 async def get_project(slug: SlugParam, request: Request, response: Response, db: DB) -> Any:
+    no_store(response)
     project = await projects.public_get(db, slug)
     if project is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Project not found.")
-    return _cached(request, response, project)
+    return project
 
 
 @router.get("/posts")
