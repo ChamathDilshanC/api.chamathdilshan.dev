@@ -110,14 +110,14 @@ async def _stream_openai(
 
 
 async def _stream_gemini(prompt: str) -> AsyncIterator[str]:
-    from google import genai  # type: ignore[import-not-found]
-    from google.genai import types  # type: ignore[import-not-found]
+    from google import genai  # type: ignore[import-not-found, unused-ignore]
+    from google.genai import types  # type: ignore[import-not-found, unused-ignore]
 
     client = genai.Client(
         api_key=settings.GEMINI_API_KEY,
         http_options=types.HttpOptions(api_version=settings.GEMINI_API_VERSION),
     )
-    stream = client.aio.models.generate_content_stream(
+    stream: Any = client.aio.models.generate_content_stream(
         model=settings.GEMINI_MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(temperature=0.35, max_output_tokens=500),
