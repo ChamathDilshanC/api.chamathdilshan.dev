@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import flush_content, get_or_set, key
+from app.core.config import settings
 from app.core.db import utcnow
 from app.models import Section
 from app.schemas.entities import SectionDetail, SectionSummary
@@ -103,5 +104,12 @@ async def public_content(db: AsyncSession) -> dict[str, Any]:
         return {"sections": sections}
 
     result: dict[str, Any] = await get_or_set(key("content", "all"), 3600, ["content"], load)
-    return result
+    sections = result.get("sections", {})
+    site = sections.get("site", {})
+    return {
+        "sections": {
+            **sections,
+            "site": {**site, "email": settings.PUBLIC_CONTACT_EMAIL},
+        }
+    }
 

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     PUBLIC_SITE_URL: str = "http://localhost:3000"
     NEXT_APP_URL: str = "http://localhost:3000"
     ALLOWED_ORIGINS: str = "http://localhost:3000"
+    PUBLIC_CONTACT_EMAIL: str = "chamathdilshan.dev@gmail.com"
 
     # --- Database ---
     # postgresql+asyncpg://… in production (Supabase), sqlite+aiosqlite://… locally.
