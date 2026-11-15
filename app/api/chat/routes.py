@@ -173,12 +173,14 @@ def _question_text(value: str) -> str:
     return " ".join(value.casefold().split())
 
 
-async def _instant_reply(message: str, db: Any) -> str | None:
-    """Answer common portfolio questions without waiting for a model round trip."""
+def _instant_reply(message: str) -> str | None:
+    """Answer common portfolio questions without a database or model round trip."""
     if not _has_ai_provider():
         return None
 
     question = _question_text(message)
+    seed_data = sections.seed()
+    section_data = seed_data.get("sections", {})
     about_terms = (
         "what does chamath do",
         "what do you do",
@@ -188,8 +190,6 @@ async def _instant_reply(message: str, db: Any) -> str | None:
         "what kind of work",
     )
     if any(term in question for term in about_terms):
-        content = await sections.public_content(db)
-        section_data = content.get("sections", {})
         about = section_data.get("home.about", {})
         site = section_data.get("site", {})
         answer = about.get("statement") or site.get("description")
@@ -197,17 +197,15 @@ async def _instant_reply(message: str, db: Any) -> str | None:
             return str(answer)
 
     if any(term in question for term in ("skills", "tech stack", "technology", "technologies")):
-        skill_list = await skills.public_list(db)
+        skill_list = seed_data.get("skills", [])
         names = [str(skill.get("name")) for skill in skill_list if skill.get("name")]
         if names:
             return f"Chamath works with {', '.join(names)}."
 
     if any(term in question for term in ("contact", "hire", "work with chamath", "email")):
-        content = await sections.public_content(db)
-        section_data = content.get("sections", {})
         contact = section_data.get("page.contact", {})
         intro = contact.get("intro") or contact.get("title")
-        email = section_data.get("site", {}).get("email")
+        email = settings.PUBLIC_CONTACT_EMAIL or section_data.get("site", {}).get("email")
         parts = [
             str(value)
             for value in (intro, f"You can reach Chamath at {email}." if email else None)
@@ -217,7 +215,7 @@ async def _instant_reply(message: str, db: Any) -> str | None:
             return " ".join(parts)
 
     if any(term in question for term in ("projects", "project work", "portfolio work")):
-        project_list = await projects.public_list(db)
+        project_list = seed_data.get("projects", [])
         titles = [str(project.get("title")) for project in project_list if project.get("title")]
         if titles:
             return f"Featured projects include {', '.join(titles)}."
@@ -311,7 +309,7 @@ async def _stream_gemini(prompt: str) -> AsyncIterator[str]:
 )
 async def chat(body: ChatIn, response: Response, db: DB) -> StreamingResponse:
     no_store(response)
-    instant_reply = await _instant_reply(body.message, db)
+    instant_reply = _instant_reply(body.message)
     if instant_reply:
 
         async def instant_stream() -> AsyncIterator[str]:
