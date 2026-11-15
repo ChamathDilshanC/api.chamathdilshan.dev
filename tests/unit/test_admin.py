@@ -13,8 +13,8 @@ THUMB = {"url": "https://res.cloudinary.com/demo/image/upload/v1/site/a.jpg", "a
 
 def test_production_revalidation_uses_canonical_host(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "APP_ENV", "production")
-    monkeypatch.setattr(settings, "NEXT_APP_URL", "https://chamathdilshan.dev")
-    assert settings.frontend_revalidation_url == "https://www.chamathdilshan.com"
+    monkeypatch.setattr(settings, "NEXT_APP_URL", "https://chamathdilshan.com")
+    assert settings.frontend_revalidation_url == "https://chamathdilshan.com"
 
 
 def project(**overrides: Any) -> dict[str, Any]:

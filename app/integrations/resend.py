@@ -24,7 +24,7 @@ class EmailError(Exception):
 def _code_email(code: str, minutes: int) -> tuple[str, str]:
     spaced = " ".join(code)
     text = (
-        f"Your chamathdilshan.dev admin sign-in code is {code}.\n\n"
+        f"Your chamathdilshan.com admin sign-in code is {code}.\n\n"
         f"It expires in {minutes} minutes. If you did not just sign in with Google, "
         "someone has your Google session: sign out of other devices and change your password."
     )
@@ -35,7 +35,7 @@ def _code_email(code: str, minutes: int) -> tuple[str, str]:
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px">
     <tr><td align="center">
       <table role="presentation" width="100%" style="{card}">
-        <tr><td style="font-size:13px;color:#666">chamathdilshan.dev · Admin</td></tr>
+        <tr><td style="font-size:13px;color:#666">chamathdilshan.com · Admin</td></tr>
         <tr><td style="padding-top:24px;font-size:22px;font-weight:600;letter-spacing:-0.5px">
           Your sign-in code</td></tr>
         <tr><td style="padding-top:24px">

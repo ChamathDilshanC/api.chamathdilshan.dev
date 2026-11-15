@@ -44,7 +44,7 @@ class Settings(BaseSettings):
 
     # --- Email verification code (Resend) ---
     RESEND_API_KEY: str = ""
-    RESEND_FROM: str = "chamathdilshan.dev <auth@chamathdilshan.dev>"
+    RESEND_FROM: str = "chamathdilshan.com <auth@chamathdilshan.com>"
     OTP_TTL_SECONDS: int = 600
     OTP_MAX_ATTEMPTS: int = 5
     OTP_MAX_SENDS: int = 4
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
-    CLOUDINARY_FOLDER: str = "chamathdilshan.dev"
+    CLOUDINARY_FOLDER: str = "chamathdilshan.com"
     # Must match the account's signature algorithm (Settings → Security).
     CLOUDINARY_SIGNATURE_ALGORITHM: str = "sha1"
 
@@ -118,8 +118,8 @@ class Settings(BaseSettings):
     @property
     def frontend_revalidation_url(self) -> str:
         """Use the canonical public host for production cache invalidation."""
-        if self.is_production and self.NEXT_APP_URL.endswith("chamathdilshan.dev"):
-            return "https://www.chamathdilshan.com"
+        if self.is_production:
+            return "https://chamathdilshan.com"
         return self.NEXT_APP_URL.rstrip("/")
 
     @property
