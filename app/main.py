@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin.routes import router as admin_router
 from app.api.auth.routes import router as auth_router
+from app.api.chat.routes import close_provider_client
 from app.api.chat.routes import router as chat_router
 from app.api.contact.routes import router as contact_router
 from app.api.content.routes import router as public_router
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     redis = get_redis()
     if redis is not None:
         await redis.aclose()
+    await close_provider_client()
     await dispose_engine()
 
 

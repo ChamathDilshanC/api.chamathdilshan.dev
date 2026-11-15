@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Response
 from fastapi.responses import StreamingResponse
 from pydantic import Field
 
+from app.core.cache import get_or_set, key
 from app.core.config import settings
 from app.core.http_cache import no_store
 from app.schemas.common import CamelModel
@@ -18,6 +19,8 @@ from app.security.rate_limit import chat_limit
 from app.services import experience, posts, projects, sections, skills
 
 router = APIRouter()
+_provider_client: httpx.AsyncClient | None = None
+_gemini_client: Any | None = None
 
 
 class ChatMessage(CamelModel):
@@ -34,30 +37,120 @@ def _event(event: str, payload: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(payload, separators=(',', ':'))}\n\n"
 
 
+def _fields(value: Any, fields: tuple[str, ...]) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    return {
+        field: value[field]
+        for field in fields
+        if field in value and value[field] not in (None, "", [])
+    }
+
+
 def _context(payloads: dict[str, Any]) -> str:
     encoded = json.dumps(payloads, separators=(",", ":"), default=str)
-    return encoded[:28_000]
+    return encoded[:14_000]
 
 
-async def _portfolio_context(db: Any) -> str:
-    content = await sections.public_content(db)
-    project_list = await projects.public_list(db)
-    post_list = await posts.public_list(db)
-    skill_list = await skills.public_list(db)
-    experience_list = await experience.public_list(db)
+def _compact_context(
+    content: dict[str, Any],
+    project_list: list[dict[str, Any]],
+    post_list: list[dict[str, Any]],
+    skill_list: list[dict[str, Any]],
+    experience_list: list[dict[str, Any]],
+) -> str:
+    """Keep the chat prompt factual without shipping galleries and full articles."""
+    sections = content.get("sections", {}) if isinstance(content, dict) else {}
+    about = sections.get("home.about", {})
+    services = sections.get("home.services", {})
+    pricing = sections.get("home.pricing", {})
+    contact = sections.get("page.contact", {})
+
+    projects = [
+        _fields(project, ("slug", "title", "category", "year", "summary", "tech", "liveUrl"))
+        for project in project_list
+    ]
+    posts = [
+        _fields(post, ("slug", "title", "category", "date", "excerpt"))
+        for post in post_list
+    ]
+    skills = [_fields(skill, ("name", "category")) for skill in skill_list]
+    experience = []
+    for company in experience_list:
+        experience.append(
+            {
+                **_fields(company, ("company", "companyUrl", "location")),
+                "roles": [
+                    _fields(
+                        role,
+                        (
+                            "title",
+                            "employmentType",
+                            "start",
+                            "end",
+                            "summary",
+                            "highlights",
+                            "skills",
+                        ),
+                    )
+                    for role in company.get("roles", [])
+                ],
+            }
+        )
+
     return _context(
         {
-            "experience": experience_list,
-            "content": content,
-            "projects": project_list,
-            "articles": post_list,
-            "skills": skill_list,
+            "site": _fields(sections.get("site", {}), ("name", "description", "email", "github")),
+            "about": _fields(about, ("title", "aside", "statement", "pre", "post", "results")),
+            "services": {
+                **_fields(services, ("title", "aside", "statement")),
+                "items": [
+                    _fields(item, ("number", "title", "heading", "body"))
+                    for item in services.get("items", [])
+                ],
+            },
+            "pricing": {
+                **_fields(pricing, ("title", "aside")),
+                "plans": [
+                    _fields(plan, ("name", "description", "price", "unit", "included"))
+                    for plan in pricing.get("plans", [])
+                ],
+            },
+            "contact": {
+                **_fields(contact, ("title", "intro")),
+                "categories": [
+                    _fields(category, ("title", "description"))
+                    for category in contact.get("categories", [])
+                ],
+            },
+            "projects": projects,
+            "articles": posts,
+            "skills": skills,
+            "experience": experience,
         }
     )
 
 
+async def _portfolio_context(db: Any) -> str:
+    async def load() -> str:
+        content = await sections.public_content(db)
+        project_list = await projects.public_list(db)
+        post_list = await posts.public_list(db)
+        skill_list = await skills.public_list(db)
+        experience_list = await experience.public_list(db)
+        return _compact_context(content, project_list, post_list, skill_list, experience_list)
+
+    # One composite cache hit avoids five Redis round trips on every question.
+    return await get_or_set(
+        key("chat", "portfolio-context"),
+        300,
+        ["content", "projects", "blog", "skills", "experience"],
+        load,
+    )
+
+
 def _prompt(body: ChatIn, context: str) -> str:
-    history = "\n".join(f"{item.role}: {item.content}" for item in body.history[-8:])
+    history = "\n".join(f"{item.role}: {item.content[:800]}" for item in body.history[-6:])
     return (
         "You are the helpful portfolio assistant for Chamath Dilshan. Answer questions "
         "about Chamath, his projects, articles, skills, experience, and ways to work with him. "
@@ -83,44 +176,62 @@ async def _stream_openai(
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.35,
-        "max_tokens": 500,
+        "max_tokens": 360,
         "stream": True,
     }
-    async with httpx.AsyncClient(
-        timeout=settings.AI_PROVIDER_TIMEOUT_SECONDS, headers=headers
-    ) as client:
-        async with client.stream(
-            "POST", f"{base_url.rstrip('/')}/chat/completions", json=payload
-        ) as response:
-            if response.status_code >= 400:
-                raise RuntimeError(f"{provider} returned status {response.status_code}")
-            async for line in response.aiter_lines():
-                if not line.startswith("data: "):
-                    continue
-                value = line[6:]
-                if value == "[DONE]":
-                    return
-                try:
-                    chunk = json.loads(value)
-                    text = chunk["choices"][0]["delta"].get("content", "")
-                except (KeyError, IndexError, TypeError, json.JSONDecodeError):
-                    continue
-                if text:
-                    yield text
+    client = _get_provider_client()
+    async with client.stream(
+        "POST", f"{base_url.rstrip('/')}/chat/completions", headers=headers, json=payload
+    ) as response:
+        if response.status_code >= 400:
+            raise RuntimeError(f"{provider} returned status {response.status_code}")
+        async for line in response.aiter_lines():
+            if not line.startswith("data: "):
+                continue
+            value = line[6:]
+            if value == "[DONE]":
+                return
+            try:
+                chunk = json.loads(value)
+                text = chunk["choices"][0]["delta"].get("content", "")
+            except (KeyError, IndexError, TypeError, json.JSONDecodeError):
+                continue
+            if text:
+                yield text
+
+
+def _get_provider_client() -> httpx.AsyncClient:
+    global _provider_client
+    if _provider_client is None or _provider_client.is_closed:
+        _provider_client = httpx.AsyncClient(
+            timeout=settings.AI_PROVIDER_TIMEOUT_SECONDS,
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        )
+    return _provider_client
+
+
+async def close_provider_client() -> None:
+    global _provider_client
+    if _provider_client is not None:
+        await _provider_client.aclose()
+        _provider_client = None
 
 
 async def _stream_gemini(prompt: str) -> AsyncIterator[str]:
     from google import genai  # type: ignore[import-not-found, unused-ignore]
     from google.genai import types  # type: ignore[import-not-found, unused-ignore]
 
-    client = genai.Client(
-        api_key=settings.GEMINI_API_KEY,
-        http_options=types.HttpOptions(api_version=settings.GEMINI_API_VERSION),
-    )
+    global _gemini_client
+    if _gemini_client is None:
+        _gemini_client = genai.Client(
+            api_key=settings.GEMINI_API_KEY,
+            http_options=types.HttpOptions(api_version=settings.GEMINI_API_VERSION),
+        )
+    client = _gemini_client
     stream: Any = client.aio.models.generate_content_stream(
         model=settings.GEMINI_MODEL,
         contents=prompt,
-        config=types.GenerateContentConfig(temperature=0.35, max_output_tokens=500),
+        config=types.GenerateContentConfig(temperature=0.35, max_output_tokens=360),
     )
     if inspect.isawaitable(stream):
         stream = await stream
