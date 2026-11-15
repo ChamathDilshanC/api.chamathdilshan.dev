@@ -12,9 +12,10 @@ from pydantic import Field
 
 from app.core.cache import get_or_set, key
 from app.core.config import settings
+from app.core.db import get_sessionmaker
 from app.core.http_cache import no_store
 from app.schemas.common import CamelModel
-from app.security.deps import DB, require_trusted_origin
+from app.security.deps import require_trusted_origin
 from app.security.rate_limit import chat_limit
 from app.services import experience, posts, projects, sections, skills
 
@@ -303,29 +304,10 @@ async def _stream_gemini(prompt: str) -> AsyncIterator[str]:
             yield text
 
 
-@router.post(
-    "/chat",
-    dependencies=[Depends(require_trusted_origin), Depends(chat_limit)],
-)
-async def chat(body: ChatIn, response: Response, db: DB) -> StreamingResponse:
-    no_store(response)
-    instant_reply = _instant_reply(body.message)
-    if instant_reply:
-
-        async def instant_stream() -> AsyncIterator[str]:
-            yield _event("token", {"text": instant_reply})
-            yield _event("done", {})
-
-        return StreamingResponse(
-            instant_stream(),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-        )
-
-    context = await _portfolio_context(db)
-    prompt = _prompt(body, context)
-
-    async def stream() -> AsyncIterator[str]:
+async def _model_stream(body: ChatIn) -> AsyncIterator[str]:
+    async with get_sessionmaker()() as db:
+        context = await _portfolio_context(db)
+        prompt = _prompt(body, context)
         providers = settings.ai_provider_order
         emitted = False
         for provider in providers:
@@ -372,8 +354,28 @@ async def chat(body: ChatIn, response: Response, db: DB) -> StreamingResponse:
             },
         )
 
+
+@router.post(
+    "/chat",
+    dependencies=[Depends(require_trusted_origin), Depends(chat_limit)],
+)
+async def chat(body: ChatIn, response: Response) -> StreamingResponse:
+    no_store(response)
+    instant_reply = _instant_reply(body.message)
+    if instant_reply:
+
+        async def instant_stream() -> AsyncIterator[str]:
+            yield _event("token", {"text": instant_reply})
+            yield _event("done", {})
+
+        return StreamingResponse(
+            instant_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
     return StreamingResponse(
-        stream(),
+        _model_stream(body),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
