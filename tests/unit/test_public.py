@@ -1,7 +1,9 @@
 """Public read API: defaults, caching headers and conditional requests."""
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import settings
 from app.schemas.sections import SECTIONS
 
 
@@ -75,3 +77,14 @@ def test_chat_returns_a_safe_stream_when_ai_is_not_configured(client: TestClient
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/event-stream")
     assert "temporarily unavailable" in response.text
+
+
+def test_chat_answers_common_question_without_model_round_trip(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "configured-for-test")
+    response = client.post("/api/chat", json={"message": "What does Chamath do?"})
+    assert response.status_code == 200
+    assert "event: token" in response.text
+    assert "event: done" in response.text
+    assert "temporarily unavailable" not in response.text
