@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
-    CLOUDINARY_FOLDER: str = "chamathdilshan.com"
+    CLOUDINARY_FOLDER: str = "chamathdilshan.dev"
     # Must match the account's signature algorithm (Settings → Security).
     CLOUDINARY_SIGNATURE_ALGORITHM: str = "sha1"
 
