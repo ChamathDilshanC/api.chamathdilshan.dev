@@ -105,7 +105,7 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "openai/gpt-oss-120b"
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_MODEL: str = "openrouter/free"
-    AI_PROVIDER_ORDER: str = "gemini,groq,openrouter"
+    AI_PROVIDER_ORDER: str = "groq,gemini,openrouter"
     AI_FALLBACK_ENABLED: bool = True
     AI_PROVIDER_TIMEOUT_SECONDS: float = 45.0
     AI_MAX_RETRY_AFTER_SECONDS: float = 2.0
