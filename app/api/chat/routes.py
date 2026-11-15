@@ -70,10 +70,7 @@ def _compact_context(
         _fields(project, ("slug", "title", "category", "year", "summary", "tech", "liveUrl"))
         for project in project_list
     ]
-    posts = [
-        _fields(post, ("slug", "title", "category", "date", "excerpt"))
-        for post in post_list
-    ]
+    posts = [_fields(post, ("slug", "title", "category", "date", "excerpt")) for post in post_list]
     skills = [_fields(skill, ("name", "category")) for skill in skill_list]
     experience = []
     for company in experience_list:
@@ -163,6 +160,71 @@ def _prompt(body: ChatIn, context: str) -> str:
     )
 
 
+def _has_ai_provider() -> bool:
+    configured = {
+        "groq": settings.GROQ_API_KEY,
+        "gemini": settings.GEMINI_API_KEY,
+        "openrouter": settings.OPENROUTER_API_KEY,
+    }
+    return any(configured.get(provider) for provider in settings.ai_provider_order)
+
+
+def _question_text(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+async def _instant_reply(message: str, db: Any) -> str | None:
+    """Answer common portfolio questions without waiting for a model round trip."""
+    if not _has_ai_provider():
+        return None
+
+    question = _question_text(message)
+    about_terms = (
+        "what does chamath do",
+        "what do you do",
+        "who is chamath",
+        "about chamath",
+        "tell me about chamath",
+        "what kind of work",
+    )
+    if any(term in question for term in about_terms):
+        content = await sections.public_content(db)
+        section_data = content.get("sections", {})
+        about = section_data.get("home.about", {})
+        site = section_data.get("site", {})
+        answer = about.get("statement") or site.get("description")
+        if answer:
+            return str(answer)
+
+    if any(term in question for term in ("skills", "tech stack", "technology", "technologies")):
+        skill_list = await skills.public_list(db)
+        names = [str(skill.get("name")) for skill in skill_list if skill.get("name")]
+        if names:
+            return f"Chamath works with {', '.join(names)}."
+
+    if any(term in question for term in ("contact", "hire", "work with chamath", "email")):
+        content = await sections.public_content(db)
+        section_data = content.get("sections", {})
+        contact = section_data.get("page.contact", {})
+        intro = contact.get("intro") or contact.get("title")
+        email = section_data.get("site", {}).get("email")
+        parts = [
+            str(value)
+            for value in (intro, f"You can reach Chamath at {email}." if email else None)
+            if value
+        ]
+        if parts:
+            return " ".join(parts)
+
+    if any(term in question for term in ("projects", "project work", "portfolio work")):
+        project_list = await projects.public_list(db)
+        titles = [str(project.get("title")) for project in project_list if project.get("title")]
+        if titles:
+            return f"Featured projects include {', '.join(titles)}."
+
+    return None
+
+
 async def _stream_openai(
     provider: str, api_key: str, model: str, base_url: str, prompt: str
 ) -> AsyncIterator[str]:
@@ -176,9 +238,11 @@ async def _stream_openai(
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.35,
-        "max_tokens": 360,
+        "max_tokens": 240,
         "stream": True,
     }
+    if model.startswith("openai/gpt-oss-"):
+        payload["reasoning_effort"] = "low"
     client = _get_provider_client()
     async with client.stream(
         "POST", f"{base_url.rstrip('/')}/chat/completions", headers=headers, json=payload
@@ -240,12 +304,26 @@ async def _stream_gemini(prompt: str) -> AsyncIterator[str]:
         if text:
             yield text
 
+
 @router.post(
     "/chat",
     dependencies=[Depends(require_trusted_origin), Depends(chat_limit)],
 )
 async def chat(body: ChatIn, response: Response, db: DB) -> StreamingResponse:
     no_store(response)
+    instant_reply = await _instant_reply(body.message, db)
+    if instant_reply:
+
+        async def instant_stream() -> AsyncIterator[str]:
+            yield _event("token", {"text": instant_reply})
+            yield _event("done", {})
+
+        return StreamingResponse(
+            instant_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
     context = await _portfolio_context(db)
     prompt = _prompt(body, context)
 

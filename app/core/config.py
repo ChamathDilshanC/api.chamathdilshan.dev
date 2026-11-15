@@ -102,7 +102,7 @@ class Settings(BaseSettings):
     GEMINI_TIMEOUT_SECONDS: float = 45.0
     GEMINI_MAX_RETRIES: int = 2
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "openai/gpt-oss-120b"
+    GROQ_MODEL: str = "openai/gpt-oss-20b"
     OPENROUTER_API_KEY: str = ""
     OPENROUTER_MODEL: str = "openrouter/free"
     AI_PROVIDER_ORDER: str = "groq,gemini,openrouter"
