@@ -47,11 +47,11 @@ async def _portfolio_context(db: Any) -> str:
     experience_list = await experience.public_list(db)
     return _context(
         {
+            "experience": experience_list,
             "content": content,
             "projects": project_list,
             "articles": post_list,
             "skills": skill_list,
-            "experience": experience_list,
         }
     )
 
