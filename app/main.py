@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin.routes import router as admin_router
 from app.api.auth.routes import router as auth_router
+from app.api.chat.routes import router as chat_router
 from app.api.contact.routes import router as contact_router
 from app.api.content.routes import router as public_router
 from app.core.config import settings
@@ -80,4 +81,5 @@ async def health(response: Response) -> dict[str, str]:
 app.include_router(public_router, prefix="/api", tags=["public"])
 app.include_router(contact_router, prefix="/api", tags=["contact"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(chat_router, prefix="/api", tags=["chat"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])

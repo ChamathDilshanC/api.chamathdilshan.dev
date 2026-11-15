@@ -81,6 +81,7 @@ class Settings(BaseSettings):
     # --- Rate limiting (SECURITY.md §20) ---
     RATE_LIMIT_AUTH_PER_MINUTE: int = 10
     RATE_LIMIT_CONTACT_PER_HOUR: int = 5
+    RATE_LIMIT_CHAT_PER_HOUR: int = 20
 
     # --- Observability ---
     LOG_LEVEL: str = "info"

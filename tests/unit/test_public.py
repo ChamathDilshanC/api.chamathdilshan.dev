@@ -68,3 +68,10 @@ def test_empty_collections(client: TestClient) -> None:
     assert client.get("/api/posts").json() == []
     assert client.get("/api/skills").json() == []
     assert client.get("/api/experience").json() == []
+
+
+def test_chat_returns_a_safe_stream_when_ai_is_not_configured(client: TestClient) -> None:
+    response = client.post("/api/chat", json={"message": "What does Chamath do?"})
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert "temporarily unavailable" in response.text

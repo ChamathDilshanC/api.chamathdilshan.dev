@@ -61,5 +61,16 @@ def contact_limit(request: Request) -> None:
     )
 
 
+def chat_limit(request: Request) -> None:
+    """Keep the public AI endpoint bounded per visitor."""
+    check(
+        "chat",
+        visitor_ip(request),
+        settings.RATE_LIMIT_CHAT_PER_HOUR,
+        window=3600.0,
+        detail="You have asked a lot of questions already. Try again in an hour.",
+    )
+
+
 def reset() -> None:
     _hits.clear()
