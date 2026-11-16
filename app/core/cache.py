@@ -125,7 +125,10 @@ async def revalidate_frontend(tags: list[str], paths: list[str]) -> None:
     if not settings.CACHE_REVALIDATE_SECRET:
         return
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        # The public host may redirect to its canonical www host before the
+        # route runs. Follow that redirect so cache invalidation is not
+        # silently skipped after an admin mutation.
+        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
             response = await client.post(
                 f"{settings.frontend_revalidation_url}/api/revalidate",
                 headers={"x-revalidate-secret": settings.CACHE_REVALIDATE_SECRET},

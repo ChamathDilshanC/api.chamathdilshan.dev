@@ -49,7 +49,7 @@ async def test_frontend_revalidation_posts_project_tags_and_paths(
     client = _Client(_Response(200))
     monkeypatch.setattr(settings, "CACHE_REVALIDATE_SECRET", "test-secret")
     monkeypatch.setattr(settings, "NEXT_APP_URL", "https://www.chamathdilshan.com")
-    monkeypatch.setattr(cache.httpx, "AsyncClient", lambda timeout: client)
+    monkeypatch.setattr(cache.httpx, "AsyncClient", lambda timeout, follow_redirects: client)
 
     await cache.revalidate_frontend(
         ["projects", "project:cap-it-screen-recorder"], ["/", "/projects"]
@@ -69,7 +69,7 @@ async def test_frontend_revalidation_rejection_does_not_fail_admin_mutation(
 ) -> None:
     client = _Client(_Response(403))
     monkeypatch.setattr(settings, "CACHE_REVALIDATE_SECRET", "test-secret")
-    monkeypatch.setattr(cache.httpx, "AsyncClient", lambda timeout: client)
+    monkeypatch.setattr(cache.httpx, "AsyncClient", lambda timeout, follow_redirects: client)
 
     with caplog.at_level("ERROR", logger="app.core.cache"):
         await cache.revalidate_frontend(["projects"], ["/", "/projects"])
