@@ -3,7 +3,7 @@
 import inspect
 import json
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from fastapi import APIRouter, Depends, Response
@@ -139,11 +139,14 @@ async def _portfolio_context(db: Any) -> str:
         return _compact_context(content, project_list, post_list, skill_list, experience_list)
 
     # One composite cache hit avoids five Redis round trips on every question.
-    return await get_or_set(
-        key("chat", "portfolio-context"),
-        300,
-        ["content", "projects", "blog", "skills", "experience"],
-        load,
+    return cast(
+        str,
+        await get_or_set(
+            key("chat", "portfolio-context"),
+            300,
+            ["content", "projects", "blog", "skills", "experience"],
+            load,
+        ),
     )
 
 
