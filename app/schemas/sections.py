@@ -197,8 +197,6 @@ class HomeCta(CamelModel):
     marquee: Line
     background: ImageUrl
     background_alt: Line = ""
-    portrait: ImageUrl
-    portrait_alt: Line = ""
     action: Cta
 
 
@@ -370,7 +368,7 @@ _SPECS = [
                 HomePricing),
     SectionSpec("home.testimonials", "Testimonials", "Home", "Quotes from clients.",
                 HomeTestimonials),
-    SectionSpec("home.cta", "Call to action", "Home", "Dark band with the scrolling line.",
+    SectionSpec("home.cta", "Call to action", "Home", "Dark band with the brand mark and contact action.",
                 HomeCta),
     SectionSpec("home.numbers", "In numbers", "Home", "Four headline figures.", HomeNumbers),
     SectionSpec("home.journal", "Journal", "Home",

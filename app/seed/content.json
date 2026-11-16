@@ -300,8 +300,6 @@
       "marquee": "Software Made For Tomorrow, By Chamath",
       "background": "/images/placeholders/cta.jpg",
       "backgroundAlt": "Dusk light over a pool and dark walls",
-      "portrait": "/images/placeholders/cta-portrait.jpg",
-      "portraitAlt": "A dark column in glowing amber smoke",
       "action": {
         "label": "Contact Now",
         "href": "/contact"
