@@ -3,9 +3,12 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.responses import FileResponse, HTMLResponse
 
 from app.api.admin.routes import router as admin_router
 from app.api.auth.routes import router as auth_router
@@ -20,6 +23,7 @@ from app.security.tokens import session_secret
 
 logging.basicConfig(level=settings.LOG_LEVEL.upper())
 log = logging.getLogger(__name__)
+LOGO_PATH = Path(__file__).resolve().parent / "assets" / "Logo.png"
 
 
 @asynccontextmanager
@@ -41,11 +45,27 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title="chamathdilshan.dev API",
     version="0.2.0",
-    docs_url=None if settings.is_production else "/docs",
+    docs_url=None,
     redoc_url=None,
     openapi_url=None if settings.is_production else "/openapi.json",
     lifespan=lifespan,
 )
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> FileResponse:
+    return FileResponse(LOGO_PATH, media_type="image/png")
+
+
+if not settings.is_production:
+
+    @app.get("/docs", include_in_schema=False)
+    async def swagger_ui() -> HTMLResponse:
+        return get_swagger_ui_html(
+            openapi_url="/openapi.json",
+            title=f"{app.title} - Swagger UI",
+            swagger_favicon_url="/favicon.ico",
+        )
 
 # Explicit origins only — never "*" for an API that carries a session cookie.
 # (SECURITY.md §19)
