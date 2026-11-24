@@ -82,9 +82,17 @@ class FooterCredit(CamelModel):
     href: Href
 
 
+DEFAULT_FOOTER_PROFILE_IMAGE = (
+    "https://res.cloudinary.com/vmfn84y1/image/upload/"
+    "f_auto,q_auto,c_fill,g_face,w_256,h_256/"
+    "v1793902790/chamathdilshan.dev/shared/hcc5l3yfawhijzq2vbsc-15.png"
+)
+
+
 class Footer(CamelModel):
     heading: Short
     cta: Cta
+    profile_image: ImageUrl = DEFAULT_FOOTER_PROFILE_IMAGE
     copyright: Line
     credit: FooterCredit
 
@@ -352,7 +360,7 @@ _SPECS = [
     SectionSpec("navigation", "Navigation", "Global", "Menu labels in the header and footer.",
                 Navigation),
     SectionSpec("faq", "FAQ", "Global", "Questions shown above the footer on every page.", Faq),
-    SectionSpec("footer", "Footer", "Global", "Heading, call to action and copyright line.",
+    SectionSpec("footer", "Footer", "Global", "Heading, profile image, call to action and copyright line.",
                 Footer),
     SectionSpec("home.layout", "Home layout", "Home",
                 "Order and visibility of the home page sections.", HomeLayout),
