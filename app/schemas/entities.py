@@ -59,6 +59,11 @@ class ProjectIn(CamelModel):
     ] = []
     live_url: ExternalUrl | None = Field(default=None, title="Live site URL")
     repo_url: ExternalUrl | None = Field(default=None, title="Source code URL")
+    youtube_url: ExternalUrl | None = Field(
+        default=None,
+        title="YouTube video URL",
+        description="Optional YouTube walkthrough shown before the repositories section.",
+    )
     template: Annotated[
         Literal[
             "legacy",
@@ -111,6 +116,7 @@ class ProjectPublic(CamelModel):
     tech: list[str]
     live_url: str | None
     repo_url: str | None
+    youtube_url: str | None
     featured: bool
     template: str = "legacy"
     template_config: dict[str, Any] = {}

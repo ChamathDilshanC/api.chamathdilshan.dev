@@ -12,10 +12,26 @@ from app.schemas.entities import ProjectIn, ProjectOut, ProjectPublic
 from app.services.common import dump, not_found, slugify, unique_slug
 from app.services.media import delete_project_assets
 
+YOUTUBE_URL_KEY = "youtubeUrl"
+
 
 def cms_summary(value: str | None) -> str:
     """Keep legacy and generated summaries within the CMS line-field limit."""
     return (value or "")[:300].rstrip()
+
+
+def _youtube_url(config: dict[str, Any] | None) -> str | None:
+    value = (config or {}).get(YOUTUBE_URL_KEY)
+    return value if isinstance(value, str) and value else None
+
+
+def _template_config(data: ProjectIn) -> dict[str, Any]:
+    config = dict(data.template_config)
+    if data.youtube_url:
+        config[YOUTUBE_URL_KEY] = data.youtube_url
+    else:
+        config.pop(YOUTUBE_URL_KEY, None)
+    return config
 
 
 def to_out(row: Project) -> ProjectOut:
@@ -37,6 +53,7 @@ def to_out(row: Project) -> ProjectOut:
             "tech": row.tech or [],
             "liveUrl": row.live_url,
             "repoUrl": row.repo_url,
+            "youtubeUrl": _youtube_url(row.template_config),
             "template": row.template,
             "templateConfig": row.template_config or {},
             "studioContent": row.studio_content or {},
@@ -74,6 +91,7 @@ def to_public(row: Project) -> dict[str, Any] | None:
             "tech": row.tech or [],
             "liveUrl": row.live_url,
             "repoUrl": row.repo_url,
+            "youtubeUrl": _youtube_url(row.template_config),
             "template": row.template,
             "templateConfig": row.template_config or {},
             "studioContent": row.studio_content or {},
@@ -102,7 +120,7 @@ def _apply(row: Project, data: ProjectIn) -> None:
     row.live_url = data.live_url
     row.repo_url = data.repo_url
     row.template = data.template
-    row.template_config = data.template_config
+    row.template_config = _template_config(data)
     row.studio_content = data.studio_content
     row.seo = data.seo
     row.repositories = data.repositories

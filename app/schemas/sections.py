@@ -360,7 +360,8 @@ _SPECS = [
     SectionSpec("navigation", "Navigation", "Global", "Menu labels in the header and footer.",
                 Navigation),
     SectionSpec("faq", "FAQ", "Global", "Questions shown above the footer on every page.", Faq),
-    SectionSpec("footer", "Footer", "Global", "Heading, profile image, call to action and copyright line.",
+    SectionSpec(
+        "footer", "Footer", "Global", "Heading, profile image, call to action and copyright line.",
                 Footer),
     SectionSpec("home.layout", "Home layout", "Home",
                 "Order and visibility of the home page sections.", HomeLayout),

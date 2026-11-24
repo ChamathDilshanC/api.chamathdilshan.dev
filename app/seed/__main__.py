@@ -44,7 +44,12 @@ async def run(with_sections: bool) -> None:
                         hero=dump(item.hero), intro=item.intro, discover=item.discover,
                         explore=item.explore, results=[dump(r) for r in item.results],
                         gallery=[dump(g) for g in item.gallery], tech=item.tech,
-                        live_url=item.live_url, repo_url=item.repo_url, featured=item.featured,
+                        live_url=item.live_url, repo_url=item.repo_url,
+                        template_config={
+                            **item.template_config,
+                            **({"youtubeUrl": item.youtube_url} if item.youtube_url else {}),
+                        },
+                        featured=item.featured,
                         published=True, sort_order=position,
                     )
                 )
